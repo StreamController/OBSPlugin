@@ -1,1 +1,6 @@
-obs-websocket-py>=1.0
+loguru==0.7.2
+obs-websocket-py==1.0
+Pyro5==5.15
+serpent==1.41
+streamcontroller-plugin-tools>=0.0.4
+websocket-client==1.7.0

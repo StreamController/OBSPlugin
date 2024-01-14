@@ -1,4 +1,3 @@
-from plugins.dev_core447_OBSPlugin.backend.OBSController import OBSController
 from src.backend.PluginManager.ActionBase import ActionBase
 from src.backend.PluginManager.PluginBase import PluginBase
 
@@ -13,7 +12,6 @@ import os
 import threading
 from datetime import timedelta
 from loguru import logger as log
-from obswebsocket import events
 
 # Add plugin to sys.paths
 sys.path.append(os.path.dirname(__file__))
@@ -30,7 +28,7 @@ class OBS(PluginBase):
         super().__init__()
 
         # Launch backend
-        self.launch_backend(os.path.join(self.PATH, "backend", "backend.py"))
+        self.launch_backend(os.path.join(self.PATH, "backend", "backend.py"), os.path.join(self.PATH, ".venv"))
 
         self.add_action(ToggleRecord)
         self.add_action(RecPlayPause)
