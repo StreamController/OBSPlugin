@@ -64,7 +64,7 @@ class OBSActionBase(ActionBase):
 
     def reconnect_obs(self):
         print("reconnecing obs")
-        self.PLUGIN_BASE.obs.connect_to(host=self.PLUGIN_BASE.get_settings()["ip"], port=self.PLUGIN_BASE.get_settings()["port"], password=self.PLUGIN_BASE.get_settings()["password"], timeout=3, legacy=False)
+        self.PLUGIN_BASE.backend.connect_to(host=self.PLUGIN_BASE.get_settings()["ip"], port=self.PLUGIN_BASE.get_settings()["port"], password=self.PLUGIN_BASE.get_settings()["password"], timeout=3, legacy=False)
 
         if self.PLUGIN_BASE.backend.get_connected():
             self.status_label.set_label("Successfully connected to OBS")

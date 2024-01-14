@@ -42,8 +42,11 @@ class Backend(BackendBase):
 
     def toggle_record_pause(self):
         self.OBSController.toggle_record_pause()
-    
 
+    def connect_to(self, *args, **kwargs):
+        self.OBSController.connect_to(*args, **kwargs)
+    
+print("init backend")
 backend = Backend()
 
 
