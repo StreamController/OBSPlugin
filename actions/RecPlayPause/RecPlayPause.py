@@ -5,6 +5,7 @@ class RecPlayPause(OBSActionBase):
     ACTION_NAME = "Recording Play/Pause"
     CONTROLS_KEY_IMAGE = True
     def __init__(self, deck_controller, page, coords):
+        self.current_state = -1
         super().__init__(deck_controller=deck_controller, page=page, coords=coords)
 
     def on_ready(self):
@@ -38,6 +39,9 @@ class RecPlayPause(OBSActionBase):
         2: Paused
         3: Stopping in progress
         """
+        if state == self.current_state:
+            return
+        self.current_state = state
         image = "record_inactive.png"
         if state == 1:
             self.set_bottom_label("Pause", font_size=16)
