@@ -184,7 +184,7 @@ class OBSController(obsws):
     def register(self, *args, **kwargs):
         """
         Pass all event register calls to the event_obs.
-        This avoid crashes if a request is made in an event
+        This avoids crashes if a request is made in an event
         """
         try:
             self.event_obs.register(*args, **kwargs)

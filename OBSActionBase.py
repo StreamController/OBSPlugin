@@ -66,7 +66,7 @@ class OBSActionBase(ActionBase):
         print("reconnecing obs")
         self.PLUGIN_BASE.obs.connect_to(host=self.PLUGIN_BASE.get_settings()["ip"], port=self.PLUGIN_BASE.get_settings()["port"], password=self.PLUGIN_BASE.get_settings()["password"], timeout=3, legacy=False)
 
-        if self.PLUGIN_BASE.obs.connected:
+        if self.PLUGIN_BASE.backend.get_connected():
             self.status_label.set_label("Successfully connected to OBS")
             self.status_label.remove_css_class("red")
             self.status_label.add_css_class("green")
