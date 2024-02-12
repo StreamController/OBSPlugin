@@ -22,7 +22,7 @@ class OBSController(obsws):
             self.event_obs = obsws(host=host, port=port, timeout=timeout, legacy=legacy, on_connect=self.on_connect, on_disconnect=self.on_disconnect, authreconnect=True, **kwargs)
             self.connect()
             log.info("Successfully connected to OBS")
-        except obswebsocket.exceptions.ConnectionFailure as e:
+        except (obswebsocket.exceptions.ConnectionFailure, ValueError) as e:
             try:
                 log.error(f"Failed to connect to OBS with legacy: {legacy}, trying with legacy: {not legacy}")
                 super().__init__(host=host, port=port, timeout=timeout, legacy=not legacy, on_connect=self.on_connect, on_disconnect=self.on_disconnect, authreconnect=True, **kwargs)
