@@ -29,7 +29,9 @@ class OBSController(obsws):
                 self.event_obs = obsws(host=host, port=port, timeout=timeout, legacy=not legacy, on_connect=self.on_connect, on_disconnect=self.on_disconnect, authreconnect=True, **kwargs)
                 self.connect()
                 log.info("Successfully connected to OBS")
-            except obswebsocket.exceptions.ConnectionFailure as e:
+            
+            # ValueError: invalid port etc
+            except (obswebsocket.exceptions.ConnectionFailure, ValueError) as e:
                 log.error(f"Failed to connect to OBS: {e}")
 
 
