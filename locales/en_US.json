@@ -1,0 +1,10 @@
+{
+    "plugin.name": "OBS",
+    "actions.toggle-record.name": "Toggle Recording",
+    "actions.rec-play-pause.name": "Play/Pause Recording",
+    "actions.base.status.no-connection": "Could not connect to OBS.",
+    "actions.base.status.connected": "Successfully connected to OBS.",
+    "actions.base.ip.label": "IP:",
+    "actions.base.port.label": "Port:",
+    "actions.base.password.label": "Password:"
+}

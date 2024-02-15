@@ -1,5 +1,8 @@
 from src.backend.PluginManager.ActionBase import ActionBase
 from src.backend.PluginManager.PluginBase import PluginBase
+from src.backend.DeckManagement.DeckController import DeckController
+from src.backend.PageManagement.Page import Page
+from src.backend.PluginManager.PluginBase import PluginBase
 
 # Import gtk modules
 import gi
@@ -8,16 +11,18 @@ gi.require_version("Adw", "1")
 from gi.repository import Gtk, Adw
 
 class OBSActionBase(ActionBase):
-    def __init__(self, deck_controller, page, coords):
-        super().__init__(deck_controller=deck_controller, page=page, coords=coords)
+    def __init__(self, action_id: str, action_name: str,
+                 deck_controller: "DeckController", page: Page, coords: str, plugin_base: PluginBase):
+        super().__init__(action_id=action_id, action_name=action_name,
+            deck_controller=deck_controller, page=page, coords=coords, plugin_base=plugin_base)
 
-        self.status_label = Gtk.Label(label="Couldn't connect to OBS", css_classes=["bold", "red"])
+        self.status_label = Gtk.Label(label=self.plugin_base.lm.get("actions.base.status.no-connection"), css_classes=["bold", "red"])
 
     def get_config_rows(self) -> list:
-        self.ip_entry = Adw.EntryRow(title="IP Address")
+        self.ip_entry = Adw.EntryRow(title=self.plugin_base.lm.get("actions.base.ip.label"))
         self.port_spinner = Adw.SpinRow.new_with_range(0, 65535, 1)
-        self.port_spinner.set_title("Port:")
-        self.password_entry = Adw.PasswordEntryRow(title="Password")
+        self.port_spinner.set_title(self.plugin_base.lm.get("actions.base.port.label"))
+        self.password_entry = Adw.PasswordEntryRow(title=self.plugin_base.lm.get("actions.base.password.label"))
 
         self.load_config_defaults()
 
@@ -29,7 +34,7 @@ class OBSActionBase(ActionBase):
         return [self.ip_entry, self.port_spinner, self.password_entry]
     
     def load_config_defaults(self):
-        settings = self.PLUGIN_BASE.get_settings()
+        settings = self.plugin_base.get_settings()
         ip = settings.setdefault("ip", "localhost")
         port = settings.setdefault("port", 4455)
         password = settings.setdefault("password", "")
@@ -39,39 +44,43 @@ class OBSActionBase(ActionBase):
         self.port_spinner.set_value(port)
         self.password_entry.set_text(password)
 
-        self.PLUGIN_BASE.set_settings(settings)
+        self.plugin_base.set_settings(settings)
 
     def on_change_ip(self, entry, *args):
-        settings = self.PLUGIN_BASE.get_settings()
+        settings = self.plugin_base.get_settings()
         settings["ip"] = entry.get_text()
-        self.PLUGIN_BASE.set_settings(settings)
+        self.plugin_base.set_settings(settings)
 
         self.reconnect_obs()
 
     def on_change_port(self, spinner, *args):
-        settings = self.PLUGIN_BASE.get_settings()
+        settings = self.plugin_base.get_settings()
         settings["port"] = int(spinner.get_value())
-        self.PLUGIN_BASE.set_settings(settings)
+        self.plugin_base.set_settings(settings)
 
         self.reconnect_obs()
 
     def on_change_password(self, entry, *args):
-        settings = self.PLUGIN_BASE.get_settings()
+        settings = self.plugin_base.get_settings()
         settings["password"] = entry.get_text()
-        self.PLUGIN_BASE.set_settings(settings)
+        self.plugin_base.set_settings(settings)
 
         self.reconnect_obs()
 
     def reconnect_obs(self):
         print("reconnecing obs")
-        self.PLUGIN_BASE.backend.connect_to(host=self.PLUGIN_BASE.get_settings()["ip"], port=self.PLUGIN_BASE.get_settings()["port"], password=self.PLUGIN_BASE.get_settings()["password"], timeout=3, legacy=False)
+        self.plugin_base.backend.connect_to(
+            host=self.plugin_base.get_settings().get("ip"),
+            port=self.plugin_base.get_settings().get("port"),
+            password=self.plugin_base.get_settings().get("password"),
+            timeout=3, legacy=False)
 
-        if self.PLUGIN_BASE.backend.get_connected():
-            self.status_label.set_label("Successfully connected to OBS")
+        if self.plugin_base.backend.get_connected():
+            self.status_label.set_label(self.plugin_base.lm.get("actions.base.status.connected"))
             self.status_label.remove_css_class("red")
             self.status_label.add_css_class("green")
         else:
-            self.status_label.set_label("Couldn't connect to OBS")
+            self.status_label.set_label(self.plugin_base.lm.get("actions.base.status.no-connection"))
             self.status_label.remove_css_class("green")
             self.status_label.add_css_class("red")
 
