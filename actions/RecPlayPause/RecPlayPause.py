@@ -22,11 +22,11 @@ class RecPlayPause(OBSActionBase):
 
     def show_current_rec_status(self, new_paused = False):
         if not self.plugin_base.backend.get_connected():
-            self.set_key(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
+            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
             return
         status = self.plugin_base.backend.get_record_status()
         if status is None:
-            self.set_key(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
+            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
             return
         if status["active"] and not status["paused"]:
             self.show_for_state(1)
