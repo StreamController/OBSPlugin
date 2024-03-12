@@ -55,7 +55,7 @@ class RecPlayPause(OBSActionBase):
         else:
             self.set_bottom_label(None)
 
-        self.set_key(media_path=os.path.join(self.plugin_base.PATH, "assets", image))
+        self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", image))
 
     def on_key_down(self):
         if not self.plugin_base.backend.get_connected():

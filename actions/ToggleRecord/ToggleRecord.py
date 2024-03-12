@@ -57,7 +57,7 @@ class ToggleRecord(OBSActionBase):
             self.show_rec_time()
             image = "record_resume.png"
 
-        self.set_key(media_path=os.path.join(self.plugin_base.PATH, "assets", image))
+        self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", image))
 
     def on_key_down(self):
         if not self.plugin_base.backend.get_connected():
@@ -69,11 +69,11 @@ class ToggleRecord(OBSActionBase):
 
     def show_rec_time(self):
         if not self.plugin_base.backend.get_connected():
-            self.set_key(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
+            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
             return
         status = self.plugin_base.backend.get_record_status()
         if status is None:
-            self.set_key(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
+            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
             return
         if not status["active"]:
             self.set_bottom_label(None)
