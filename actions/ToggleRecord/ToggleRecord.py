@@ -14,8 +14,9 @@ class ToggleRecord(OBSActionBase):
 
     def on_ready(self):
         # Connect to obs if not connected
-        if not self.plugin_base.backend.get_connected():            # self.plugin_base.obs.connect_to(host="localhost", port=4444, timeout=3, legacy=False)
-            self.reconnect_obs()
+        if self.plugin_base.backend is not None:
+            if not self.plugin_base.backend.get_connected():            # self.plugin_base.obs.connect_to(host="localhost", port=4444, timeout=3, legacy=False)
+                self.reconnect_obs()
 
         # Show current rec status
         self.show_current_rec_status()

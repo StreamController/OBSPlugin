@@ -20,8 +20,9 @@ class SwitchScene(OBSActionBase):
         
     def on_ready(self):
         # Connect to obs if not connected
-        if not self.plugin_base.backend.get_connected():            # self.plugin_base.obs.connect_to(host="localhost", port=4444, timeout=3, legacy=False)
-            self.reconnect_obs()
+        if self.plugin_base.backend is not None:
+            if not self.plugin_base.backend.get_connected():            # self.plugin_base.obs.connect_to(host="localhost", port=4444, timeout=3, legacy=False)
+                self.reconnect_obs()
 
         media_path = os.path.join(self.plugin_base.PATH, "assets", "transition_slide.png")
         self.set_media(media_path=media_path, size=0.75)
