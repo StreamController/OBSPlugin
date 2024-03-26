@@ -21,6 +21,7 @@ from OBSActionBase import OBSActionBase
 
 from actions.ToggleRecord.ToggleRecord import ToggleRecord
 from actions.RecPlayPause.RecPlayPause import RecPlayPause
+from actions.SwitchScene.SwitchScene import SwitchScene
 
 class OBS(PluginBase):
     def __init__(self):
@@ -57,6 +58,14 @@ class OBS(PluginBase):
             action_name=self.lm.get("actions.rec-play-pause.name")
         )
         self.add_action_holder(rec_play_pause_action_holder)
+
+        switch_scene_action_holder = ActionHolder(
+            plugin_base=self,
+            action_base=SwitchScene,
+            action_id="dev_core447_OBSPlugin::SwitchScene",
+            action_name=self.lm.get("actions.switch-scene.name")
+        )
+        self.add_action_holder(switch_scene_action_holder)
 
         # Load custom css
         self.add_css_stylesheet(os.path.join(self.PATH, "style.css"))

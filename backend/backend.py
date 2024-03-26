@@ -45,6 +45,18 @@ class Backend(BackendBase):
 
     def connect_to(self, *args, **kwargs):
         self.OBSController.connect_to(*args, **kwargs)
+
+    def get_controller(self) -> OBSController:
+        """
+        Calling methods on the returned controller will raise a circular reference error from Pyro
+        """
+        return self.OBSController
+    
+    def get_scene_names(self) -> list[str]:
+        return self.OBSController.get_scenes()
+    
+    def switch_to_scene(self, scene:str):
+        self.OBSController.switch_to_scene(scene)
     
 print("init backend")
 backend = Backend()

@@ -6,5 +6,7 @@
     "actions.base.status.connected": "Successfully connected to OBS.",
     "actions.base.ip.label": "IP:",
     "actions.base.port.label": "Port:",
-    "actions.base.password.label": "Password:"
+    "actions.base.password.label": "Password:",
+    "actions.switch.scene-row.label": "Scene:",
+    "actions.switch-scene.name": "Switch Scene"
 }
