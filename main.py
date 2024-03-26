@@ -46,7 +46,7 @@ class OBS(PluginBase):
         toggle_record_action_holder = ActionHolder(
             plugin_base=self,
             action_base=ToggleRecord,
-            action_id="dev_core447_OBSPlugin::ToggleRecord",
+            action_id="com_core447_OBSPlugin::ToggleRecord",
             action_name=self.lm.get("actions.toggle-record.name")
         )
         self.add_action_holder(toggle_record_action_holder)
@@ -54,7 +54,7 @@ class OBS(PluginBase):
         rec_play_pause_action_holder = ActionHolder(
             plugin_base=self,
             action_base=RecPlayPause,
-            action_id="dev_core447_OBSPlugin::RecPlayPause",
+            action_id="com_core447_OBSPlugin::RecPlayPause",
             action_name=self.lm.get("actions.rec-play-pause.name")
         )
         self.add_action_holder(rec_play_pause_action_holder)
@@ -62,7 +62,7 @@ class OBS(PluginBase):
         switch_scene_action_holder = ActionHolder(
             plugin_base=self,
             action_base=SwitchScene,
-            action_id="dev_core447_OBSPlugin::SwitchScene",
+            action_id="com_core447_OBSPlugin::SwitchScene",
             action_name=self.lm.get("actions.switch-scene.name")
         )
         self.add_action_holder(switch_scene_action_holder)
