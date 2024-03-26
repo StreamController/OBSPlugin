@@ -74,7 +74,10 @@ class OBSActionBase(ActionBase):
             port=self.plugin_base.get_settings().get("port"),
             password=self.plugin_base.get_settings().get("password"),
             timeout=3, legacy=False)
-
+        
+        self.update_status_label()
+        
+    def update_status_label(self) -> None:
         if self.plugin_base.backend.get_connected():
             self.status_label.set_label(self.plugin_base.lm.get("actions.base.status.connected"))
             self.status_label.remove_css_class("red")
@@ -85,4 +88,5 @@ class OBSActionBase(ActionBase):
             self.status_label.add_css_class("red")
 
     def get_custom_config_area(self):
+        self.update_status_label()
         return self.status_label
