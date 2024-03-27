@@ -60,8 +60,3 @@ class Backend(BackendBase):
     
 print("init backend")
 backend = Backend()
-
-
-for t in threading.enumerate():
-    if t.daemon:
-        t.join()

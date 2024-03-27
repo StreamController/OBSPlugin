@@ -29,7 +29,7 @@ class OBS(PluginBase):
 
         # Launch backend
         print("launch backend")
-        self.launch_backend(os.path.join(self.PATH, "backend", "backend.py"), os.path.join(self.PATH, ".venv"))
+        self.launch_backend(os.path.join(self.PATH, "backend", "backend.py"), os.path.join(self.PATH, "backend", ".venv"), open_in_terminal=True)
         print("backend launched")
 
         self.lm = self.locale_manager
