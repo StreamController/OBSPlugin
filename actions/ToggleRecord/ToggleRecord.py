@@ -32,6 +32,7 @@ class ToggleRecord(OBSActionBase):
             self.show_error()
             return
         status = self.plugin_base.backend.get_record_status()
+        print()
         if status is None:
             self.current_state = -1
             self.show_error()
@@ -77,9 +78,9 @@ class ToggleRecord(OBSActionBase):
             self.show_error()
             return
         self.plugin_base.backend.toggle_record()
+        self.on_tick()
 
     def on_tick(self):
-        return
         self.show_current_rec_status()
 
     def show_rec_time(self):
