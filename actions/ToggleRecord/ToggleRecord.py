@@ -51,19 +51,21 @@ class ToggleRecord(OBSActionBase):
         2: Paused
         3: Stopping in progress
         """
+        if state in [1, 2]:
+            self.show_rec_time()
+
         if state == self.current_state:
             return
+        
         self.current_state = state
         image = "record_inactive.png"
         if state == 0:
             self.set_bottom_label(None)
             image = "record_inactive.png"
         elif state == 1:
-            self.show_rec_time()
             image = "record_active.png"
             print("active")
         elif state == 2:
-            self.show_rec_time()
             image = "record_resume.png"
 
         self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", image))
