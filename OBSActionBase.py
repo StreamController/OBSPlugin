@@ -68,7 +68,6 @@ class OBSActionBase(ActionBase):
         self.reconnect_obs()
 
     def reconnect_obs(self):
-        print("reconnecing obs")
         self.plugin_base.backend.connect_to(
             host=self.plugin_base.get_settings().get("ip"),
             port=self.plugin_base.get_settings().get("port"),

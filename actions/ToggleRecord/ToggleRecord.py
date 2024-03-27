@@ -32,7 +32,6 @@ class ToggleRecord(OBSActionBase):
             self.show_error()
             return
         status = self.plugin_base.backend.get_record_status()
-        print()
         if status is None:
             self.current_state = -1
             self.show_error()
@@ -64,7 +63,6 @@ class ToggleRecord(OBSActionBase):
             image = "record_inactive.png"
         elif state == 1:
             image = "record_active.png"
-            print("active")
         elif state == 2:
             image = "record_resume.png"
 

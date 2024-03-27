@@ -58,5 +58,4 @@ class Backend(BackendBase):
     def switch_to_scene(self, scene:str):
         self.OBSController.switch_to_scene(scene)
     
-print("init backend")
 backend = Backend()
