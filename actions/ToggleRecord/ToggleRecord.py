@@ -13,6 +13,7 @@ class ToggleRecord(OBSActionBase):
         self.current_state = -1
 
     def on_ready(self):
+        self.current_state = -1
         # Connect to obs if not connected
         if self.plugin_base.backend is not None:
             if not self.plugin_base.backend.get_connected():            # self.plugin_base.obs.connect_to(host="localhost", port=4444, timeout=3, legacy=False)
@@ -22,12 +23,18 @@ class ToggleRecord(OBSActionBase):
         self.show_current_rec_status()
 
     def show_current_rec_status(self, new_paused = False):
+        if self.plugin_base.backend is None:
+            self.current_state = -1
+            self.show_error()
+            return
         if not self.plugin_base.backend.get_connected():
-            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
+            self.current_state = -1
+            self.show_error()
             return
         status = self.plugin_base.backend.get_record_status()
         if status is None:
-            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
+            self.current_state = -1
+            self.show_error()
             return
         if status["paused"]:
             self.show_for_state(2)
@@ -61,11 +68,18 @@ class ToggleRecord(OBSActionBase):
         self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", image))
 
     def on_key_down(self):
+        if self.plugin_base.backend is None:
+            self.current_state = -1
+            self.show_error()
+            return
         if not self.plugin_base.backend.get_connected():
+            self.current_state = -1
+            self.show_error()
             return
         self.plugin_base.backend.toggle_record()
 
     def on_tick(self):
+        return
         self.show_current_rec_status()
 
     def show_rec_time(self):
