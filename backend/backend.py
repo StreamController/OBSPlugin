@@ -4,9 +4,7 @@ from OBSController import OBSController
 from obswebsocket import events
 import os
 import threading
-import Pyro5.api
 
-@Pyro5.api.expose
 class Backend(BackendBase):
     def __init__(self):
         super().__init__()
