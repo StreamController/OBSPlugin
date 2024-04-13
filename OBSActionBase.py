@@ -15,6 +15,8 @@ class OBSActionBase(ActionBase):
                  deck_controller: "DeckController", page: Page, coords: str, plugin_base: PluginBase):
         super().__init__(action_id=action_id, action_name=action_name,
             deck_controller=deck_controller, page=page, coords=coords, plugin_base=plugin_base)
+        
+        self.HAS_CONFIGURATION = True
 
         self.status_label = Gtk.Label(label=self.plugin_base.lm.get("actions.base.status.no-connection"), css_classes=["bold", "red"])
 
