@@ -69,3 +69,10 @@ class OBS(PluginBase):
 
         # Load custom css
         self.add_css_stylesheet(os.path.join(self.PATH, "style.css"))
+
+    def get_connected(self):
+        try:
+            return self.backend.get_connected()
+        except Exception as e:
+            log.error(e)
+            return False

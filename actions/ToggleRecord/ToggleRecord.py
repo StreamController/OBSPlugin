@@ -1,4 +1,5 @@
 # from ...OBSActionBase import OBSActionBase
+import threading
 from plugins.com_core447_OBSPlugin.OBSActionBase import OBSActionBase
 from src.backend.DeckManagement.DeckController import DeckController
 from src.backend.PageManagement.Page import Page
@@ -16,11 +17,11 @@ class ToggleRecord(OBSActionBase):
         self.current_state = -1
         # Connect to obs if not connected
         if self.plugin_base.backend is not None:
-            if not self.plugin_base.backend.get_connected():            # self.plugin_base.obs.connect_to(host="localhost", port=4444, timeout=3, legacy=False)
+            if not self.plugin_base.get_connected():            # self.plugin_base.obs.connect_to(host="localhost", port=4444, timeout=3, legacy=False)
                 self.reconnect_obs()
 
         # Show current rec status
-        self.show_current_rec_status()
+        threading.Thread(target=self.show_current_rec_status, daemon=True, name="show_current_rec_status").start()
 
     def show_current_rec_status(self, new_paused = False):
         if self.plugin_base.backend is None:

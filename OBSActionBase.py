@@ -10,6 +10,9 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Gtk, Adw
 
+import threading
+from loguru import logger as log
+
 class OBSActionBase(ActionBase):
     def __init__(self, action_id: str, action_name: str,
                  deck_controller: "DeckController", page: Page, coords: str, plugin_base: PluginBase):
@@ -70,15 +73,24 @@ class OBSActionBase(ActionBase):
         self.reconnect_obs()
 
     def reconnect_obs(self):
-        self.plugin_base.backend.connect_to(
-            host=self.plugin_base.get_settings().get("ip"),
-            port=self.plugin_base.get_settings().get("port"),
-            password=self.plugin_base.get_settings().get("password"),
-            timeout=3, legacy=False)
+        threading.Thread(target=self._reconnect_obs, daemon=True, name="reconnect_obs").start()
+
+    def _reconnect_obs(self):
+        try:
+            self.plugin_base.backend.connect_to(
+                host=self.plugin_base.get_settings().get("ip"),
+                port=self.plugin_base.get_settings().get("port"),
+                password=self.plugin_base.get_settings().get("password"),
+                timeout=3, legacy=False)
+        except Exception as e:
+            log.error(e)
         
         self.update_status_label()
         
     def update_status_label(self) -> None:
+        threading.Thread(target=self._update_status_label, daemon=True, name="update_status_label").start()
+
+    def _update_status_label(self):
         if self.plugin_base.backend.get_connected():
             self.status_label.set_label(self.plugin_base.lm.get("actions.base.status.connected"))
             self.status_label.remove_css_class("red")

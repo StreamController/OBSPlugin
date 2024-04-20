@@ -1,3 +1,4 @@
+import threading
 from plugins.com_core447_OBSPlugin.OBSActionBase import OBSActionBase
 from src.backend.DeckManagement.DeckController import DeckController
 from src.backend.PageManagement.Page import Page
@@ -14,15 +15,15 @@ class RecPlayPause(OBSActionBase):
     def on_ready(self):
         # Connect to obs if not connected
         if self.plugin_base.backend is not None:
-            if not self.plugin_base.backend.get_connected():
+            if not self.plugin_base.get_connected():
                 # self.plugin_base.obs.connect_to(host="localhost", port=4444, timeout=3, legacy=False)
                 self.reconnect_obs()
 
         # Show current rec status
-        self.show_current_rec_status()
+        threading.Thread(target=self.show_current_rec_status, daemon=True, name="show_current_rec_status").start()
 
     def show_current_rec_status(self, new_paused = False):
-        if not self.plugin_base.backend.get_connected():
+        if not self.plugin_base.get_connected():
             self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
             return
         status = self.plugin_base.backend.get_record_status()
