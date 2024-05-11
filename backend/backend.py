@@ -31,9 +31,30 @@ class Backend(BackendBase):
             "duration": status.datain["outputDuration"],
             "bytes": status.datain["outputBytes"]
         }
+
+    def get_stream_status(self) -> dict:
+        status = self.OBSController.get_stream_status()
+        if status is None:
+            return
+        return {
+            "active": status.datain["outputActive"],
+            "reconnecting": status.datain["outputReconnecting"],
+            "timecode": status.datain["outputTimecode"],
+            "duration": status.datain["outputDuration"],
+            "congestion": status.datain["outputCongestion"],
+            "bytes": status.datain["outputBytes"],
+            "skipped_frames": status.datain["outputSkippedFrames"],
+            "total_frames": status.datain["outputTotalFrames"]
+        }
     
     def get_connected(self) -> bool:
         return self.OBSController.connected
+
+    def toggle_stream(self):
+        status = self.OBSController.toggle_stream()
+        if status is None:
+            return False
+        return status.datain["outputActive"]
     
     def toggle_record(self):
         self.OBSController.toggle_record()
