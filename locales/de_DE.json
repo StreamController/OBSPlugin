@@ -1,6 +1,7 @@
 {
     "plugin.name": "OBS",
     "actions.toggle-record.name": "Aufnahme pausieren",
+    "actions.toggle-stream.name": "Streaming umschalten",
     "actions.rec-play-pause.name": "Play/Pause Aufnahme",
     "actions.base.status.no-connection": "Es konnte keine Verbindung zu OBS hergestellt werden.",
     "actions.base.ip.label": "IP:",

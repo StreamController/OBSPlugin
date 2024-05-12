@@ -1,6 +1,7 @@
 {
     "plugin.name": "OBS",
     "actions.toggle-record.name": "Toggle Recording",
+    "actions.toggle-stream.name": "Toggle Steaming",
     "actions.rec-play-pause.name": "Play/Pause Recording",
     "actions.base.status.no-connection": "Could not connect to OBS.",
     "actions.base.status.connected": "Successfully connected to OBS.",

@@ -20,6 +20,7 @@ sys.path.append(os.path.dirname(__file__))
 from OBSActionBase import OBSActionBase
 
 from actions.ToggleRecord.ToggleRecord import ToggleRecord
+from actions.ToggleStream.ToggleStream import ToggleStream
 from actions.RecPlayPause.RecPlayPause import RecPlayPause
 from actions.SwitchScene.SwitchScene import SwitchScene
 
@@ -50,6 +51,14 @@ class OBS(PluginBase):
             action_name=self.lm.get("actions.toggle-record.name")
         )
         self.add_action_holder(toggle_record_action_holder)
+
+        toggle_stream_action_holder = ActionHolder(
+            plugin_base=self,
+            action_base=ToggleStream,
+            action_id="com_core447_OBSPlugin::ToggleStream",
+            action_name=self.lm.get("actions.toggle-stream.name")
+        )
+        self.add_action_holder(toggle_stream_action_holder)
 
         rec_play_pause_action_holder = ActionHolder(
             plugin_base=self,
