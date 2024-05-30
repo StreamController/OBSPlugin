@@ -33,6 +33,7 @@ class ToggleStream(OBSActionBase):
             self.current_state = -1
             self.show_error()
             return
+        self.hide_error()
         if status["active"]:
             if status["reconnecting"]:
                 self.show_for_state(2)

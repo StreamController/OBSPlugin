@@ -28,14 +28,8 @@ class OBS(PluginBase):
     def __init__(self):
         super().__init__()
 
-        # Launch backend
-        print("launch backend")
-        self.launch_backend(os.path.join(self.PATH, "backend", "backend.py"), os.path.join(self.PATH, "backend", ".venv"), open_in_terminal=False)
-        print("backend launched")
-
         self.lm = self.locale_manager
         self.lm.set_to_os_default()
-
 
         self.register(
             plugin_name=self.lm.get("plugin.name"),
@@ -43,6 +37,11 @@ class OBS(PluginBase):
             plugin_version="1.0.0",
             app_version="1.0.0-alpha",
         )
+
+        # Launch backend
+        print("launch backend")
+        self.launch_backend(os.path.join(self.PATH, "backend", "backend.py"), os.path.join(self.PATH, "backend", ".venv"), open_in_terminal=False)
+        print("backend launched")
 
         toggle_record_action_holder = ActionHolder(
             plugin_base=self,
