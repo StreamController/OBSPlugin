@@ -43,12 +43,7 @@ class OBS(PluginBase):
             plugin_name=self.lm.get("plugin.name"),
             github_repo="https://github.com/StreamController/OBSPlugin",
             plugin_version="1.0.0",
-            app_version="1.0.0-alpha",
-            action_support={
-                Input.Key: ActionInputSupport.SUPPORTED,
-                Input.Dial: ActionInputSupport.SUPPORTED,
-                Input.Touchscreen: ActionInputSupport.UNTESTED
-            }
+            app_version="1.0.0-alpha"
         )
 
         toggle_record_action_holder = ActionHolder(
