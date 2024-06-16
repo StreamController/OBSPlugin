@@ -1,6 +1,8 @@
 from src.backend.PluginManager.ActionBase import ActionBase
 from src.backend.PluginManager.PluginBase import PluginBase
 from src.backend.PluginManager.ActionHolder import ActionHolder
+from src.backend.DeckManagement.InputIdentifier import Input
+from src.backend.PluginManager.ActionInputSupport import ActionInputSupport
 
 # Import gtk modules
 import gi
@@ -42,37 +44,62 @@ class OBS(PluginBase):
             github_repo="https://github.com/StreamController/OBSPlugin",
             plugin_version="1.0.0",
             app_version="1.0.0-alpha",
+            action_support={
+                Input.Key: ActionInputSupport.SUPPORTED,
+                Input.Dial: ActionInputSupport.SUPPORTED,
+                Input.Touchscreen: ActionInputSupport.UNTESTED
+            }
         )
 
         toggle_record_action_holder = ActionHolder(
             plugin_base=self,
             action_base=ToggleRecord,
-            action_id="com_core447_OBSPlugin::ToggleRecord",
-            action_name=self.lm.get("actions.toggle-record.name")
+            action_id_suffix="ToggleRecord",
+            action_name=self.lm.get("actions.toggle-record.name"),
+            action_support={
+                Input.Key: ActionInputSupport.SUPPORTED,
+                Input.Dial: ActionInputSupport.SUPPORTED,
+                Input.Touchscreen: ActionInputSupport.UNTESTED
+            }
         )
         self.add_action_holder(toggle_record_action_holder)
 
         toggle_stream_action_holder = ActionHolder(
             plugin_base=self,
             action_base=ToggleStream,
-            action_id="com_core447_OBSPlugin::ToggleStream",
-            action_name=self.lm.get("actions.toggle-stream.name")
+            action_id_suffix="ToggleStream",
+            action_name=self.lm.get("actions.toggle-stream.name"),
+            action_support={
+                Input.Key: ActionInputSupport.SUPPORTED,
+                Input.Dial: ActionInputSupport.SUPPORTED,
+                Input.Touchscreen: ActionInputSupport.UNTESTED
+            }
         )
         self.add_action_holder(toggle_stream_action_holder)
 
         rec_play_pause_action_holder = ActionHolder(
             plugin_base=self,
             action_base=RecPlayPause,
-            action_id="com_core447_OBSPlugin::RecPlayPause",
-            action_name=self.lm.get("actions.rec-play-pause.name")
+            action_id_suffix="RecPlayPause",
+            action_name=self.lm.get("actions.rec-play-pause.name"),
+            action_support={
+                Input.Key: ActionInputSupport.SUPPORTED,
+                Input.Dial: ActionInputSupport.SUPPORTED,
+                Input.Touchscreen: ActionInputSupport.UNTESTED
+            }
         )
         self.add_action_holder(rec_play_pause_action_holder)
 
         switch_scene_action_holder = ActionHolder(
             plugin_base=self,
             action_base=SwitchScene,
-            action_id="com_core447_OBSPlugin::SwitchScene",
-            action_name=self.lm.get("actions.switch-scene.name")
+            action_id_suffix="SwitchScene",
+            action_name=self.lm.get("actions.switch-scene.name"),
+            action_support={
+                Input.Key: ActionInputSupport.SUPPORTED,
+                Input.Dial: ActionInputSupport.SUPPORTED,
+                Input.Touchscreen: ActionInputSupport.UNTESTED
+            }
         )
         self.add_action_holder(switch_scene_action_holder)
 
