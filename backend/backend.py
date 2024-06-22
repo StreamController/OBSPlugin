@@ -46,6 +46,15 @@ class Backend(BackendBase):
             "skipped_frames": status.datain["outputSkippedFrames"],
             "total_frames": status.datain["outputTotalFrames"]
         }
+
+    # Replay Buffer
+    def get_replay_buffer_status(self) -> dict:
+        status = self.OBSController.get_replay_buffer_status()
+        if status is None:
+            return
+        return {
+            "active": status.datain["outputActive"]
+        }
     
     def get_connected(self) -> bool:
         return self.OBSController.connected
@@ -61,6 +70,16 @@ class Backend(BackendBase):
 
     def toggle_record_pause(self):
         self.OBSController.toggle_record_pause()
+
+    # Replay Buffer
+    def start_replay_buffer(self):
+        self.OBSController.start_replay_buffer()
+
+    def stop_replay_buffer(self):
+        self.OBSController.stop_replay_buffer()
+
+    def save_replay_buffer(self):
+        self.OBSController.save_replay_buffer()
 
     def connect_to(self, *args, **kwargs):
         self.OBSController.connect_to(*args, **kwargs)

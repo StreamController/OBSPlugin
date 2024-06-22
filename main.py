@@ -23,6 +23,8 @@ from OBSActionBase import OBSActionBase
 
 from actions.ToggleRecord.ToggleRecord import ToggleRecord
 from actions.ToggleStream.ToggleStream import ToggleStream
+from actions.ToggleReplayBuffer.ToggleReplayBuffer import ToggleReplayBuffer
+from actions.SaveReplayBuffer.SaveReplayBuffer import SaveReplayBuffer
 from actions.RecPlayPause.RecPlayPause import RecPlayPause
 from actions.SwitchScene.SwitchScene import SwitchScene
 
@@ -71,6 +73,33 @@ class OBS(PluginBase):
             }
         )
         self.add_action_holder(toggle_stream_action_holder)
+
+        # Replay Buffer
+        toggle_replay_buffer_action_holder = ActionHolder(
+            plugin_base=self,
+            action_base=ToggleReplayBuffer,
+            action_id_suffix="ToggleReplayBuffer",
+            action_name=self.lm.get("actions.toggle-replay-buffer.name"),
+            action_support={
+                Input.Key: ActionInputSupport.SUPPORTED,
+                Input.Dial: ActionInputSupport.SUPPORTED,
+                Input.Touchscreen: ActionInputSupport.SUPPORTED,
+            }
+        )
+        self.add_action_holder(toggle_replay_buffer_action_holder)
+
+        save_replay_buffer_action_holder = ActionHolder(
+            plugin_base=self,
+            action_base=SaveReplayBuffer,
+            action_id_suffix="SaveReplayBuffer",
+            action_name=self.lm.get("actions.save-replay-buffer.name"),
+            action_support={
+                Input.Key: ActionInputSupport.SUPPORTED,
+                Input.Dial: ActionInputSupport.SUPPORTED,
+                Input.Touchscreen: ActionInputSupport.SUPPORTED,
+            }
+        )
+        self.add_action_holder(save_replay_buffer_action_holder)
 
         rec_play_pause_action_holder = ActionHolder(
             plugin_base=self,
