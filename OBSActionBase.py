@@ -17,7 +17,7 @@ class OBSActionBase(ActionBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
-        self.HAS_CONFIGURATION = True
+        self.has_configuration = True
 
         self.status_label = Gtk.Label(label=self.plugin_base.lm.get("actions.base.status.no-connection"), css_classes=["bold", "red"])
 
