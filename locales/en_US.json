@@ -6,6 +6,8 @@
 
     "actions.toggle-replay-buffer.name": "Toggle Replay Buffer",
     "actions.save-replay-buffer.name": "Save Replay Buffer",
+
+    "actions.toggle-virtual-camera.name": "Toggle Virtual Camera",
     
     "actions.rec-play-pause.name": "Play/Pause Recording",
 

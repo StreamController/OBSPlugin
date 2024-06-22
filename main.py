@@ -25,6 +25,7 @@ from actions.ToggleRecord.ToggleRecord import ToggleRecord
 from actions.ToggleStream.ToggleStream import ToggleStream
 from actions.ToggleReplayBuffer.ToggleReplayBuffer import ToggleReplayBuffer
 from actions.SaveReplayBuffer.SaveReplayBuffer import SaveReplayBuffer
+from actions.ToggleVirtualCamera.ToggleVirtualCamera import ToggleVirtualCamera
 from actions.RecPlayPause.RecPlayPause import RecPlayPause
 from actions.SwitchScene.SwitchScene import SwitchScene
 
@@ -100,6 +101,20 @@ class OBS(PluginBase):
             }
         )
         self.add_action_holder(save_replay_buffer_action_holder)
+
+        # Virtual Camera
+        toggle_virtual_camera_action_holder = ActionHolder(
+            plugin_base=self,
+            action_base=ToggleVirtualCamera,
+            action_id_suffix="ToggleVirtualCamera",
+            action_name=self.lm.get("actions.toggle-virtual-camera.name"),
+            action_support={
+                Input.Key: ActionInputSupport.SUPPORTED,
+                Input.Dial: ActionInputSupport.SUPPORTED,
+                Input.Touchscreen: ActionInputSupport.SUPPORTED,
+            }
+        )
+        self.add_action_holder(toggle_virtual_camera_action_holder)
 
         rec_play_pause_action_holder = ActionHolder(
             plugin_base=self,

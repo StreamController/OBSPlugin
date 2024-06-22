@@ -55,6 +55,15 @@ class Backend(BackendBase):
         return {
             "active": status.datain["outputActive"]
         }
+
+    # Virtual Camera
+    def get_virtual_camera_status(self) -> dict:
+        status = self.OBSController.get_virtual_camera_status()
+        if status is None:
+            return
+        return {
+            "active": status.datain["outputActive"]
+        }
     
     def get_connected(self) -> bool:
         return self.OBSController.connected
@@ -80,6 +89,13 @@ class Backend(BackendBase):
 
     def save_replay_buffer(self):
         self.OBSController.save_replay_buffer()
+
+    # Virtual Camera
+    def start_virtual_camera(self):
+        self.OBSController.start_virtual_camera()
+
+    def stop_virtual_camera(self):
+        self.OBSController.stop_virtual_camera()
 
     def connect_to(self, *args, **kwargs):
         self.OBSController.connect_to(*args, **kwargs)

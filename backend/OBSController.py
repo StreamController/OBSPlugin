@@ -198,3 +198,26 @@ class OBSController(obsws):
             self.event_obs.register(*args, **kwargs)
         except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
+
+
+    # Virtual Camera
+    def start_virtual_camera(self):
+        try:
+            return self.call(requests.StartVirtualCam())
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
+            log.error(e)
+    
+    def stop_virtual_camera(self):
+        try:
+            return self.call(requests.StopVirtualCam())
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
+            log.error(e)
+    
+    def get_virtual_camera_status(self):
+        """
+        outputActive: bool -> Whether replay buffer is active
+        """
+        try:
+            return self.call(requests.GetVirtualCamStatus())
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
+            log.error(e)
