@@ -1,8 +1,8 @@
 {
     "version": "1.0.1",
     "thumbnail": "store/Thumbnail.png",
-    "id": "com_core447_OBSPlugin",
-    "name": "OBS",
+    "id": "com_axolotlmaid_test",
+    "name": "test",
     "descriptions": {
         "en_US": "Control OBS."
     },
