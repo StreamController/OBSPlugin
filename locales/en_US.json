@@ -1,23 +1,26 @@
 {
     "plugin.name": "OBS",
 
-    "actions.toggle-record.name": "Toggle Recording",
     "actions.toggle-stream.name": "Toggle Steaming",
+
+    "actions.toggle-record.name": "Toggle Recording",
+    "actions.rec-play-pause.name": "Play/Pause Recording",
 
     "actions.toggle-replay-buffer.name": "Toggle Replay Buffer",
     "actions.save-replay-buffer.name": "Save Replay Buffer",
 
     "actions.toggle-virtual-camera.name": "Toggle Virtual Camera",
-    
-    "actions.rec-play-pause.name": "Play/Pause Recording",
+
+    "actions.toggle-studio-mode.name": "Toggle Studio Mode",
+    "actions.trigger-transition.name": "Trigger Transition",
+
+    "actions.switch.scene-row.label": "Scene:",
+    "actions.switch-scene.name": "Switch Scene",
 
     "actions.base.status.no-connection": "Could not connect to OBS.",
     "actions.base.status.connected": "Successfully connected to OBS.",
 
     "actions.base.ip.label": "IP:",
     "actions.base.port.label": "Port:",
-    "actions.base.password.label": "Password:",
-
-    "actions.switch.scene-row.label": "Scene:",
-    "actions.switch-scene.name": "Switch Scene"
+    "actions.base.password.label": "Password:"
 }

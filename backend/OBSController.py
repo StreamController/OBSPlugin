@@ -147,7 +147,7 @@ class OBSController(obsws):
             log.error(e)
     
 
-    ## UI methods
+    ## Studio Mode
     def get_studio_mode_enabled(self):
         """
         studioModeEnabled: bool -> Whether studio mode is enabled
@@ -159,6 +159,12 @@ class OBSController(obsws):
     
     def set_studio_mode_enabled(self, enabled:bool):
         return self.call(requests.SetStudioModeEnabled(studioModeEnabled=enabled))
+
+    def trigger_transition(self):
+        try:
+            return self.call(requests.TriggerStudioModeTransition())
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
+            log.error(e)
     
     
     ## Replay Buffer
@@ -200,7 +206,7 @@ class OBSController(obsws):
             log.error(e)
 
 
-    # Virtual Camera
+    ## Virtual Camera
     def start_virtual_camera(self):
         try:
             return self.call(requests.StartVirtualCam())

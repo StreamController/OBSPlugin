@@ -20,18 +20,19 @@ class Backend(BackendBase):
     between the frontend and the backend in default python data types
     """
 
-    def get_record_status(self) -> dict:
-        status = self.OBSController.get_record_status()
-        if status is None:
-            return
-        return {
-            "active": status.datain["outputActive"],
-            "paused": status.datain["outputPaused"],
-            "timecode": status.datain["outputTimecode"],
-            "duration": status.datain["outputDuration"],
-            "bytes": status.datain["outputBytes"]
-        }
+    def get_connected(self) -> bool:
+        return self.OBSController.connected
 
+    def connect_to(self, *args, **kwargs):
+        self.OBSController.connect_to(*args, **kwargs)
+
+    def get_controller(self) -> OBSController:
+        """
+        Calling methods on the returned controller will raise a circular reference error from Pyro
+        """
+        return self.OBSController
+
+    # Streaming
     def get_stream_status(self) -> dict:
         status = self.OBSController.get_stream_status()
         if status is None:
@@ -47,6 +48,31 @@ class Backend(BackendBase):
             "total_frames": status.datain["outputTotalFrames"]
         }
 
+    def toggle_stream(self):
+        status = self.OBSController.toggle_stream()
+        if status is None:
+            return False
+        return status.datain["outputActive"]
+    
+    # Recording
+    def get_record_status(self) -> dict:
+        status = self.OBSController.get_record_status()
+        if status is None:
+            return
+        return {
+            "active": status.datain["outputActive"],
+            "paused": status.datain["outputPaused"],
+            "timecode": status.datain["outputTimecode"],
+            "duration": status.datain["outputDuration"],
+            "bytes": status.datain["outputBytes"]
+        }
+
+    def toggle_record(self):
+        self.OBSController.toggle_record()
+
+    def toggle_record_pause(self):
+        self.OBSController.toggle_record_pause()
+
     # Replay Buffer
     def get_replay_buffer_status(self) -> dict:
         status = self.OBSController.get_replay_buffer_status()
@@ -56,31 +82,6 @@ class Backend(BackendBase):
             "active": status.datain["outputActive"]
         }
 
-    # Virtual Camera
-    def get_virtual_camera_status(self) -> dict:
-        status = self.OBSController.get_virtual_camera_status()
-        if status is None:
-            return
-        return {
-            "active": status.datain["outputActive"]
-        }
-    
-    def get_connected(self) -> bool:
-        return self.OBSController.connected
-
-    def toggle_stream(self):
-        status = self.OBSController.toggle_stream()
-        if status is None:
-            return False
-        return status.datain["outputActive"]
-    
-    def toggle_record(self):
-        self.OBSController.toggle_record()
-
-    def toggle_record_pause(self):
-        self.OBSController.toggle_record_pause()
-
-    # Replay Buffer
     def start_replay_buffer(self):
         self.OBSController.start_replay_buffer()
 
@@ -91,21 +92,31 @@ class Backend(BackendBase):
         self.OBSController.save_replay_buffer()
 
     # Virtual Camera
+    def get_virtual_camera_status(self) -> dict:
+        status = self.OBSController.get_virtual_camera_status()
+        if status is None:
+            return
+        return {
+            "active": status.datain["outputActive"]
+        }
+
     def start_virtual_camera(self):
         self.OBSController.start_virtual_camera()
 
     def stop_virtual_camera(self):
         self.OBSController.stop_virtual_camera()
 
-    def connect_to(self, *args, **kwargs):
-        self.OBSController.connect_to(*args, **kwargs)
+    # Studio Mode
+    def get_studio_mode_enabled(self):
+        self.OBSController.get_studio_mode_enabled()
 
-    def get_controller(self) -> OBSController:
-        """
-        Calling methods on the returned controller will raise a circular reference error from Pyro
-        """
-        return self.OBSController
-    
+    def set_studio_mode_enabled(self, enabled: bool):
+        self.OBSController.set_studio_mode_enabled(enabled)
+
+    def trigger_transition(self):
+        self.OBSController.trigger_transition()
+
+    # Scenes
     def get_scene_names(self) -> list[str]:
         return self.OBSController.get_scenes()
     

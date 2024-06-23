@@ -23,9 +23,15 @@ from OBSActionBase import OBSActionBase
 
 from actions.ToggleRecord.ToggleRecord import ToggleRecord
 from actions.ToggleStream.ToggleStream import ToggleStream
+
 from actions.ToggleReplayBuffer.ToggleReplayBuffer import ToggleReplayBuffer
 from actions.SaveReplayBuffer.SaveReplayBuffer import SaveReplayBuffer
+
 from actions.ToggleVirtualCamera.ToggleVirtualCamera import ToggleVirtualCamera
+
+from actions.ToggleStudioMode.ToggleStudioMode import ToggleStudioMode
+from actions.TriggerTransition.TriggerTransition import TriggerTransition
+
 from actions.RecPlayPause.RecPlayPause import RecPlayPause
 from actions.SwitchScene.SwitchScene import SwitchScene
 
@@ -115,6 +121,33 @@ class OBS(PluginBase):
             }
         )
         self.add_action_holder(toggle_virtual_camera_action_holder)
+
+        # Studio Mode
+        toggle_studio_mode_action_holder = ActionHolder(
+            plugin_base=self,
+            action_base=ToggleStudioMode,
+            action_id_suffix="ToggleStudioMode",
+            action_name=self.lm.get("actions.toggle-studio-mode.name"),
+            action_support={
+                Input.Key: ActionInputSupport.SUPPORTED,
+                Input.Dial: ActionInputSupport.SUPPORTED,
+                Input.Touchscreen: ActionInputSupport.SUPPORTED,
+            }
+        )
+        self.add_action_holder(toggle_studio_mode_action_holder)
+
+        trigger_transition_action_holder = ActionHolder(
+            plugin_base=self,
+            action_base=TriggerTransition,
+            action_id_suffix="TriggerTransition",
+            action_name=self.lm.get("actions.trigger-transition.name"),
+            action_support={
+                Input.Key: ActionInputSupport.SUPPORTED,
+                Input.Dial: ActionInputSupport.SUPPORTED,
+                Input.Touchscreen: ActionInputSupport.SUPPORTED,
+            }
+        )
+        self.add_action_holder(trigger_transition_action_holder)
 
         rec_play_pause_action_holder = ActionHolder(
             plugin_base=self,
