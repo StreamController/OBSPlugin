@@ -34,6 +34,8 @@ from actions.TriggerTransition.TriggerTransition import TriggerTransition
 
 from actions.ToggleInputMute.ToggleInputMute import ToggleInputMute
 
+from actions.ToggleSceneItemEnabled.ToggleSceneItemEnabled import ToggleSceneItemEnabled
+
 from actions.RecPlayPause.RecPlayPause import RecPlayPause
 from actions.SwitchScene.SwitchScene import SwitchScene
 
@@ -179,6 +181,20 @@ class OBS(PluginBase):
             }
         )
         self.add_action_holder(toggle_input_mute_action_holder)
+
+        # Scene Items
+        toggle_scene_item_enabled_action_holder = ActionHolder(
+            plugin_base=self,
+            action_base=ToggleSceneItemEnabled,
+            action_id_suffix="ToggleSceneItemEnabled",
+            action_name=self.lm.get("actions.toggle-scene-item-enabled.name"),
+            action_support={
+                Input.Key: ActionInputSupport.SUPPORTED,
+                Input.Dial: ActionInputSupport.SUPPORTED,
+                Input.Touchscreen: ActionInputSupport.SUPPORTED,
+            }
+        )
+        self.add_action_holder(toggle_scene_item_enabled_action_holder)
 
         # Scenes
         switch_scene_action_holder = ActionHolder(

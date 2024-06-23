@@ -215,7 +215,7 @@ class OBSController(obsws):
             log.error(e)
 
 
-    # Input Muting
+    ## Input Muting
     def get_inputs(self) -> list:
         try:
             inputs = self.call(requests.GetInputList()).getInputs()
@@ -239,7 +239,32 @@ class OBSController(obsws):
             log.error(e)
 
 
-    # Scenes
+    ## Scene Items
+    def get_scene_items(self, sceneName: str) -> list:
+        try:
+            sceneItems = self.call(requests.GetSceneItemList(sceneName)).getSceneItems()
+            log.error(sceneItems)
+            return [sceneItem["sceneItemId"] for sceneItem in sceneItems]
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
+            log.error(e)
+
+    def get_scene_item_enabled(self, sceneItemId: int) -> None:
+        """
+        sceneItemEnabled: bool -> Whether the scene item is enabled. true for enabled, false for disabled
+        """
+        try:
+            return self.call(requests.GetSceneItemEnabled(sceneItemId))
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
+            log.error(e)
+
+    def set_scene_item_enabled(self, sceneItemId: int, enabled: bool) -> None:
+        try:
+            self.call(requests.SetSceneItemEnabled(sceneItemId, sceneItemEnabled=enabled))
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
+            log.error(e)
+
+
+    ## Scenes
     def get_scenes(self) -> list:
         try:
             scenes = self.call(requests.GetSceneList()).getScenes()
