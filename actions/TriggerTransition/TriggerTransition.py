@@ -15,10 +15,7 @@ class TriggerTransition(OBSActionBase):
         if self.plugin_base.backend is not None:
             if not self.plugin_base.get_connected():            # self.plugin_base.obs.connect_to(host="localhost", port=4444, timeout=3, legacy=False)
                 self.reconnect_obs()
-
-    def show_for_state(self, state: int):
-        image = "record_inactive.png"
-        self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", image))
+        self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "record_inactive.png"))
 
     def on_key_down(self):
         if self.plugin_base.backend is None:

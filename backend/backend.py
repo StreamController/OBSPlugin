@@ -107,14 +107,34 @@ class Backend(BackendBase):
         self.OBSController.stop_virtual_camera()
 
     # Studio Mode
-    def get_studio_mode_enabled(self):
-        self.OBSController.get_studio_mode_enabled()
+    def get_studio_mode_enabled(self) -> dict:
+        status = self.OBSController.get_studio_mode_enabled()
+        if status is None:
+            return
+        return {
+            "active": status.datain["studioModeEnabled"]
+        }
 
     def set_studio_mode_enabled(self, enabled: bool):
         self.OBSController.set_studio_mode_enabled(enabled)
 
     def trigger_transition(self):
         self.OBSController.trigger_transition()
+
+    # Input Muting
+    def get_inputs(self) -> list[str]:
+        return self.OBSController.get_inputs()
+
+    def get_input_muted(self, input: str):
+        status = self.OBSController.get_input_muted(input)
+        if status is None:
+            return
+        return {
+            "muted": status.datain["inputMuted"]
+        }
+
+    def set_input_muted(self, input: str, muted: bool):
+        self.OBSController.set_input_muted(input, muted)
 
     # Scenes
     def get_scene_names(self) -> list[str]:

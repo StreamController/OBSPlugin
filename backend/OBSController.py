@@ -35,20 +35,7 @@ class OBSController(obsws):
                 log.error(f"Failed to connect to OBS: {e}")
 
 
-    def get_scenes(self) -> list:
-        try:
-            scenes = self.call(requests.GetSceneList()).getScenes()
-            return [scene["sceneName"] for scene in scenes]
-        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
-            log.error(e)
-    
-    def switch_to_scene(self, scene:str) -> None:
-        try:
-            self.call(requests.SetCurrentProgramScene(sceneName=scene))
-        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
-            log.error(e)
-
-    ## Stream methods
+    ## Streaming
     def start_stream(self) -> None:
         try:
             self.call(requests.StartStream())
@@ -93,7 +80,7 @@ class OBSController(obsws):
             log.error(e)
     
 
-    ## Record methods
+    ## Recording
     def start_record(self) -> None:
         try:
             return self.call(requests.StartRecord())
@@ -143,26 +130,6 @@ class OBSController(obsws):
     def toggle_record_pause(self):
         try:
             return self.call(requests.ToggleRecordPause())
-        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
-            log.error(e)
-    
-
-    ## Studio Mode
-    def get_studio_mode_enabled(self):
-        """
-        studioModeEnabled: bool -> Whether studio mode is enabled
-        """
-        try:
-            return self.call(requests.GetStudioModeEnabled())
-        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
-            log.error(e)
-    
-    def set_studio_mode_enabled(self, enabled:bool):
-        return self.call(requests.SetStudioModeEnabled(studioModeEnabled=enabled))
-
-    def trigger_transition(self):
-        try:
-            return self.call(requests.TriggerStudioModeTransition())
         except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
     
@@ -225,5 +192,63 @@ class OBSController(obsws):
         """
         try:
             return self.call(requests.GetVirtualCamStatus())
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
+            log.error(e)
+
+    ## Studio Mode
+    def get_studio_mode_enabled(self):
+        """
+        studioModeEnabled: bool -> Whether studio mode is enabled
+        """
+        try:
+            return self.call(requests.GetStudioModeEnabled())
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
+            log.error(e)
+    
+    def set_studio_mode_enabled(self, enabled:bool):
+        return self.call(requests.SetStudioModeEnabled(studioModeEnabled=enabled))
+
+    def trigger_transition(self):
+        try:
+            return self.call(requests.TriggerStudioModeTransition())
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
+            log.error(e)
+
+
+    # Input Muting
+    def get_inputs(self) -> list:
+        try:
+            inputs = self.call(requests.GetInputList()).getInputs()
+            return [input["inputName"] for input in inputs]
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
+            log.error(e)
+
+    def get_input_muted(self, input: str) -> None:
+        """
+        inputMuted: bool -> Whether the input is muted
+        """
+        try:
+            return self.call(requests.GetInputMute(inputName=input))
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
+            log.error(e)
+
+    def set_input_muted(self, input: str, muted: bool) -> None:
+        try:
+            self.call(requests.SetInputMute(inputName=input, inputMuted=muted))
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
+            log.error(e)
+
+
+    # Scenes
+    def get_scenes(self) -> list:
+        try:
+            scenes = self.call(requests.GetSceneList()).getScenes()
+            return [scene["sceneName"] for scene in scenes]
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
+            log.error(e)
+    
+    def switch_to_scene(self, scene:str) -> None:
+        try:
+            self.call(requests.SetCurrentProgramScene(sceneName=scene))
         except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)

@@ -14,6 +14,9 @@
     "actions.toggle-studio-mode.name": "Toggle Studio Mode",
     "actions.trigger-transition.name": "Trigger Transition",
 
+    "actions.toggle-input-mute-row.label": "Input:",
+    "actions.toggle-input-mute.name": "Toggle Input Mute",
+
     "actions.switch.scene-row.label": "Scene:",
     "actions.switch-scene.name": "Switch Scene",
 

@@ -32,6 +32,8 @@ from actions.ToggleVirtualCamera.ToggleVirtualCamera import ToggleVirtualCamera
 from actions.ToggleStudioMode.ToggleStudioMode import ToggleStudioMode
 from actions.TriggerTransition.TriggerTransition import TriggerTransition
 
+from actions.ToggleInputMute.ToggleInputMute import ToggleInputMute
+
 from actions.RecPlayPause.RecPlayPause import RecPlayPause
 from actions.SwitchScene.SwitchScene import SwitchScene
 
@@ -50,11 +52,12 @@ class OBS(PluginBase):
 
         self.register(
             plugin_name=self.lm.get("plugin.name"),
-            github_repo="https://github.com/axolotlmaid/OBSPlugin",
+            github_repo="https://github.com/StreamController/OBSPlugin",
             plugin_version="1.0.1",
             app_version="1.0.0-alpha"
         )
 
+        # Recording
         toggle_record_action_holder = ActionHolder(
             plugin_base=self,
             action_base=ToggleRecord,
@@ -68,6 +71,20 @@ class OBS(PluginBase):
         )
         self.add_action_holder(toggle_record_action_holder)
 
+        rec_play_pause_action_holder = ActionHolder(
+            plugin_base=self,
+            action_base=RecPlayPause,
+            action_id_suffix="RecPlayPause",
+            action_name=self.lm.get("actions.rec-play-pause.name"),
+            action_support={
+                Input.Key: ActionInputSupport.SUPPORTED,
+                Input.Dial: ActionInputSupport.SUPPORTED,
+                Input.Touchscreen: ActionInputSupport.UNTESTED
+            }
+        )
+        self.add_action_holder(rec_play_pause_action_holder)
+
+        # Streaming
         toggle_stream_action_holder = ActionHolder(
             plugin_base=self,
             action_base=ToggleStream,
@@ -149,19 +166,21 @@ class OBS(PluginBase):
         )
         self.add_action_holder(trigger_transition_action_holder)
 
-        rec_play_pause_action_holder = ActionHolder(
+        # Input Muting
+        toggle_input_mute_action_holder = ActionHolder(
             plugin_base=self,
-            action_base=RecPlayPause,
-            action_id_suffix="RecPlayPause",
-            action_name=self.lm.get("actions.rec-play-pause.name"),
+            action_base=ToggleInputMute,
+            action_id_suffix="ToggleInputMute",
+            action_name=self.lm.get("actions.toggle-input-mute.name"),
             action_support={
                 Input.Key: ActionInputSupport.SUPPORTED,
                 Input.Dial: ActionInputSupport.SUPPORTED,
-                Input.Touchscreen: ActionInputSupport.UNTESTED
+                Input.Touchscreen: ActionInputSupport.SUPPORTED,
             }
         )
-        self.add_action_holder(rec_play_pause_action_holder)
+        self.add_action_holder(toggle_input_mute_action_holder)
 
+        # Scenes
         switch_scene_action_holder = ActionHolder(
             plugin_base=self,
             action_base=SwitchScene,
