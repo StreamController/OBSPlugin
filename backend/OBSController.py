@@ -15,6 +15,16 @@ class OBSController(obsws):
     def on_disconnect(self, obs):
         self.connected = False
 
+    def register(self, *args, **kwargs):
+        """
+        Pass all event register calls to the event_obs.
+        This avoids crashes if a request is made in an event
+        """
+        try:
+            self.event_obs.register(*args, **kwargs)
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
+            log.error(e)
+
     def connect_to(self, host=None, port=None, timeout=1, legacy=False, **kwargs):
         try:
             log.debug(f"Trying to connect to obs with legacy: {legacy}")
@@ -161,16 +171,6 @@ class OBSController(obsws):
             return self.call(requests.GetReplayBufferStatus())
         except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
-    
-    def register(self, *args, **kwargs):
-        """
-        Pass all event register calls to the event_obs.
-        This avoids crashes if a request is made in an event
-        """
-        try:
-            self.event_obs.register(*args, **kwargs)
-        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
-            log.error(e)
 
 
     ## Virtual Camera
@@ -242,24 +242,25 @@ class OBSController(obsws):
     ## Scene Items
     def get_scene_items(self, sceneName: str) -> list:
         try:
-            sceneItems = self.call(requests.GetSceneItemList(sceneName)).getSceneItems()
-            log.error(sceneItems)
-            return [sceneItem["sceneItemId"] for sceneItem in sceneItems]
+            sceneItems = self.call(requests.GetSceneItemList(sceneName=sceneName)).getSceneItems()
+            return [sceneItem["sourceName"] for sceneItem in sceneItems]
         except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
 
-    def get_scene_item_enabled(self, sceneItemId: int) -> None:
+    def get_scene_item_enabled(self, sceneName: str, sourceName: str) -> None:
         """
         sceneItemEnabled: bool -> Whether the scene item is enabled. true for enabled, false for disabled
         """
         try:
-            return self.call(requests.GetSceneItemEnabled(sceneItemId))
+            sceneItemId = self.call(requests.GetSceneItemId(sceneName=sceneName, sourceName=sourceName)).getSceneItemId()
+            return self.call(requests.GetSceneItemEnabled(sceneName=sceneName, sceneItemId=sceneItemId))
         except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
 
-    def set_scene_item_enabled(self, sceneItemId: int, enabled: bool) -> None:
+    def set_scene_item_enabled(self, sceneName: str, sourceName: str, enabled: bool) -> None:
         try:
-            self.call(requests.SetSceneItemEnabled(sceneItemId, sceneItemEnabled=enabled))
+            sceneItemId = self.call(requests.GetSceneItemId(sceneName=sceneName, sourceName=sourceName)).getSceneItemId()
+            self.call(requests.SetSceneItemEnabled(sceneName=sceneName, sceneItemId=sceneItemId, sceneItemEnabled=enabled))
         except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
 

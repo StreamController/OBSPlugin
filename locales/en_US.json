@@ -17,11 +17,11 @@
     "actions.toggle-input-mute-row.label": "Input:",
     "actions.toggle-input-mute.name": "Toggle Input Mute",
 
-    "actions.toggle-scene-item-enabled-row.label": "Item:",
-    "actions.toggle-scene-item-enabled.name": "Toggle Scene Item Enabled",
-
     "actions.switch.scene-row.label": "Scene:",
     "actions.switch-scene.name": "Switch Scene",
+
+    "actions.toggle-scene-item-enabled-row.label": "Item:",
+    "actions.toggle-scene-item-enabled.name": "Toggle Scene Item Enabled",
 
     "actions.base.status.no-connection": "Could not connect to OBS.",
     "actions.base.status.connected": "Successfully connected to OBS.",

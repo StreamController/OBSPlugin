@@ -182,20 +182,6 @@ class OBS(PluginBase):
         )
         self.add_action_holder(toggle_input_mute_action_holder)
 
-        # Scene Items
-        toggle_scene_item_enabled_action_holder = ActionHolder(
-            plugin_base=self,
-            action_base=ToggleSceneItemEnabled,
-            action_id_suffix="ToggleSceneItemEnabled",
-            action_name=self.lm.get("actions.toggle-scene-item-enabled.name"),
-            action_support={
-                Input.Key: ActionInputSupport.SUPPORTED,
-                Input.Dial: ActionInputSupport.SUPPORTED,
-                Input.Touchscreen: ActionInputSupport.SUPPORTED,
-            }
-        )
-        self.add_action_holder(toggle_scene_item_enabled_action_holder)
-
         # Scenes
         switch_scene_action_holder = ActionHolder(
             plugin_base=self,
@@ -209,6 +195,20 @@ class OBS(PluginBase):
             }
         )
         self.add_action_holder(switch_scene_action_holder)
+
+        # Scene Items
+        toggle_scene_item_enabled_action_holder = ActionHolder(
+            plugin_base=self,
+            action_base=ToggleSceneItemEnabled,
+            action_id_suffix="ToggleSceneItemEnabled",
+            action_name=self.lm.get("actions.toggle-scene-item-enabled.name"),
+            action_support={
+                Input.Key: ActionInputSupport.SUPPORTED,
+                Input.Dial: ActionInputSupport.SUPPORTED,
+                Input.Touchscreen: ActionInputSupport.SUPPORTED,
+            }
+        )
+        self.add_action_holder(toggle_scene_item_enabled_action_holder)
 
         # Load custom css
         self.add_css_stylesheet(os.path.join(self.PATH, "style.css"))
