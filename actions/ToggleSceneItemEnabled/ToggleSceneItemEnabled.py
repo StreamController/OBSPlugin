@@ -113,6 +113,11 @@ class ToggleSceneItemEnabled(OBSActionBase):
                 return
             for scene in scenes:
                 self.scene_model.append(scene)
+            # Ensure selection is made if there's only one scene
+            if len(scenes) == 1:
+                self.get_settings()["scene"] = scenes[0]
+                self.scene_row.set_selected(0)
+                self.load_items_for_scene(scenes[0])
 
         self.connect_signals()
 
@@ -127,6 +132,9 @@ class ToggleSceneItemEnabled(OBSActionBase):
                 return
             for item in items:
                 self.item_model.append(item)
+            # Ensure selection is made if there's only one item
+            if len(items) == 1:
+                self.item_row.set_selected(0)
 
     def load_configs(self):
         self.load_selected_device()
@@ -138,12 +146,10 @@ class ToggleSceneItemEnabled(OBSActionBase):
             if scene_name.get_string() == settings.get("scene"):
                 self.scene_row.set_selected(i)
                 self.load_items_for_scene(scene_name.get_string())
-                self.connect_signals()
-                return
-
-        for i, item_name in enumerate(self.item_model):
-            if item_name.get_string() == settings.get("item"):
-                self.item_row.set_selected(i)
+                for j, item_name in enumerate(self.item_model):
+                    if item_name.get_string() == settings.get("item"):
+                        self.item_row.set_selected(j)
+                        break
                 self.connect_signals()
                 return
 
