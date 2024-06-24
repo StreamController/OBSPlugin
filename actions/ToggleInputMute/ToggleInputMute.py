@@ -61,13 +61,13 @@ class ToggleInputMute(OBSActionBase):
             return
         
         self.current_state = state
-        image = "record_inactive.png"
+        image = "input_unmuted.png"
         if state == 0:
-            image = "record_inactive.png"
+            image = "input_unmuted.png"
         elif state == 1:
-            image = "record_active.png"
+            image = "input_muted.png"
 
-        self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", image))
+        self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", image), size=0.9)
 
     def get_config_rows(self) -> list:
         super_rows = super().get_config_rows()

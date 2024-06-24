@@ -46,6 +46,7 @@ class ToggleSceneItemEnabled(OBSActionBase):
         if status is None:
             self.current_state = -1
             self.show_error()
+            self.show_for_state(2)
             return
         if status["enabled"]:
             self.show_for_state(1)
@@ -54,20 +55,23 @@ class ToggleSceneItemEnabled(OBSActionBase):
 
     def show_for_state(self, state: int):
         """
-        0: Item enabled
-        1: Item disabled
+        0: Item disabled
+        1: Item enabled
         """
         if state == self.current_state:
             return
         
         self.current_state = state
-        image = "record_inactive.png"
-        if state == 0:
-            image = "record_inactive.png"
-        elif state == 1:
-            image = "record_active.png"
+        image = "scene_item_disabled.png"
 
-        self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", image))
+        if state == 0:
+            image = "scene_item_disabled.png"
+        elif state == 1:
+            image = "scene_item_enabled.png"
+        elif state == 2:
+            image = "error.png"
+
+        self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", image), size=0.75)
 
     def get_config_rows(self) -> list:
         super_rows = super().get_config_rows()

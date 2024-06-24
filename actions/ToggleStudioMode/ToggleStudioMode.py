@@ -49,11 +49,11 @@ class ToggleStudioMode(OBSActionBase):
             return
         
         self.current_state = state
-        image = "record_inactive.png"
+        image = "studio_mode_disabled.png"
         if state == 0:
-            image = "record_inactive.png"
+            image = "studio_mode_disabled.png"
         elif state == 1:
-            image = "record_active.png"
+            image = "studio_mode_enabled.png"
 
         self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", image))
 

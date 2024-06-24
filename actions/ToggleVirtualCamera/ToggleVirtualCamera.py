@@ -49,13 +49,13 @@ class ToggleVirtualCamera(OBSActionBase):
             return
         
         self.current_state = state
-        image = "record_inactive.png"
+        image = "virtual_camera_disabled.png"
         if state == 0:
-            image = "record_inactive.png"
+            image = "virtual_camera_disabled.png"
         elif state == 1:
-            image = "record_active.png"
+            image = "virtual_camera_enabled.png"
 
-        self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", image))
+        self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", image), size=0.75)
 
     def on_key_down(self):
         if self.plugin_base.backend is None:
