@@ -21,8 +21,10 @@ sys.path.append(os.path.dirname(__file__))
 
 from OBSActionBase import OBSActionBase
 
-from actions.ToggleRecord.ToggleRecord import ToggleRecord
 from actions.ToggleStream.ToggleStream import ToggleStream
+
+from actions.ToggleRecord.ToggleRecord import ToggleRecord
+from actions.RecPlayPause.RecPlayPause import RecPlayPause
 
 from actions.ToggleReplayBuffer.ToggleReplayBuffer import ToggleReplayBuffer
 from actions.SaveReplayBuffer.SaveReplayBuffer import SaveReplayBuffer
@@ -34,10 +36,9 @@ from actions.TriggerTransition.TriggerTransition import TriggerTransition
 
 from actions.ToggleInputMute.ToggleInputMute import ToggleInputMute
 
-from actions.ToggleSceneItemEnabled.ToggleSceneItemEnabled import ToggleSceneItemEnabled
-
-from actions.RecPlayPause.RecPlayPause import RecPlayPause
 from actions.SwitchScene.SwitchScene import SwitchScene
+from actions.ToggleSceneItemEnabled.ToggleSceneItemEnabled import ToggleSceneItemEnabled
+from actions.SwitchSceneCollection.SwitchSceneCollection import SwitchSceneCollection
 
 class OBS(PluginBase):
     def __init__(self):
@@ -58,6 +59,20 @@ class OBS(PluginBase):
             plugin_version="1.0.1",
             app_version="1.0.0-alpha"
         )
+
+        # Streaming
+        toggle_stream_action_holder = ActionHolder(
+            plugin_base=self,
+            action_base=ToggleStream,
+            action_id_suffix="ToggleStream",
+            action_name=self.lm.get("actions.toggle-stream.name"),
+            action_support={
+                Input.Key: ActionInputSupport.SUPPORTED,
+                Input.Dial: ActionInputSupport.SUPPORTED,
+                Input.Touchscreen: ActionInputSupport.UNTESTED
+            }
+        )
+        self.add_action_holder(toggle_stream_action_holder)
 
         # Recording
         toggle_record_action_holder = ActionHolder(
@@ -85,20 +100,6 @@ class OBS(PluginBase):
             }
         )
         self.add_action_holder(rec_play_pause_action_holder)
-
-        # Streaming
-        toggle_stream_action_holder = ActionHolder(
-            plugin_base=self,
-            action_base=ToggleStream,
-            action_id_suffix="ToggleStream",
-            action_name=self.lm.get("actions.toggle-stream.name"),
-            action_support={
-                Input.Key: ActionInputSupport.SUPPORTED,
-                Input.Dial: ActionInputSupport.SUPPORTED,
-                Input.Touchscreen: ActionInputSupport.UNTESTED
-            }
-        )
-        self.add_action_holder(toggle_stream_action_holder)
 
         # Replay Buffer
         toggle_replay_buffer_action_holder = ActionHolder(
@@ -209,6 +210,20 @@ class OBS(PluginBase):
             }
         )
         self.add_action_holder(toggle_scene_item_enabled_action_holder)
+
+        # Scene Collections
+        switch_scene_collection_action_holder = ActionHolder(
+            plugin_base=self,
+            action_base=SwitchSceneCollection,
+            action_id_suffix="SwitchSceneCollection",
+            action_name=self.lm.get("actions.switch-scene-collection.name"),
+            action_support={
+                Input.Key: ActionInputSupport.SUPPORTED,
+                Input.Dial: ActionInputSupport.SUPPORTED,
+                Input.Touchscreen: ActionInputSupport.SUPPORTED,
+            }
+        )
+        self.add_action_holder(switch_scene_collection_action_holder)
 
         # Load custom css
         self.add_css_stylesheet(os.path.join(self.PATH, "style.css"))

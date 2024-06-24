@@ -253,9 +253,13 @@ class OBSController(obsws):
         """
         try:
             sceneItemId = self.call(requests.GetSceneItemId(sceneName=sceneName, sourceName=sourceName)).getSceneItemId()
-            return self.call(requests.GetSceneItemEnabled(sceneName=sceneName, sceneItemId=sceneItemId))
+            if sceneItemId:
+                return self.call(requests.GetSceneItemEnabled(sceneName=sceneName, sceneItemId=sceneItemId))
         except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
-            log.error(e)
+            if str(e) == "'sceneItemId'":
+                log.error("Cannot find the scene item!")
+            else:
+                log.error(e)
 
     def set_scene_item_enabled(self, sceneName: str, sourceName: str, enabled: bool) -> None:
         try:
@@ -276,5 +280,20 @@ class OBSController(obsws):
     def switch_to_scene(self, scene:str) -> None:
         try:
             self.call(requests.SetCurrentProgramScene(sceneName=scene))
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
+            log.error(e)
+
+    
+    ## Scene Collections
+    def get_scene_collections(self) -> list:
+        try:
+            sceneCollections = self.call(requests.GetSceneCollectionList()).getSceneCollections()
+            return sceneCollections
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
+            log.error(e)
+
+    def set_current_scene_collection(self, sceneCollectionName: str) -> None:
+        try:
+            self.call(requests.SetCurrentSceneCollection(sceneCollectionName=sceneCollectionName))
         except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)

@@ -157,5 +157,12 @@ class Backend(BackendBase):
 
     def set_scene_item_enabled(self, sceneName: str, sourceName: str, enabled: bool):
         self.OBSController.set_scene_item_enabled(sceneName, sourceName, enabled)
+
+    # Scene Collections
+    def get_scene_collections(self) -> list[str]:
+        return self.OBSController.get_scene_collections()
+
+    def set_current_scene_collection(self, sceneCollectionName: str):
+        return self.OBSController.set_current_scene_collection(sceneCollectionName)
     
 backend = Backend()
