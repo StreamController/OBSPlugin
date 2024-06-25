@@ -25,15 +25,18 @@ class ToggleVirtualCamera(OBSActionBase):
         if self.plugin_base.backend is None:
             self.current_state = -1
             self.show_error()
+            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
             return
         if not self.plugin_base.backend.get_connected():
             self.current_state = -1
             self.show_error()
+            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
             return
         status = self.plugin_base.backend.get_virtual_camera_status()
         if status is None:
             self.current_state = -1
             self.show_error()
+            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
             return
         if status["active"]:
             self.show_for_state(1)
@@ -61,10 +64,12 @@ class ToggleVirtualCamera(OBSActionBase):
         if self.plugin_base.backend is None:
             self.current_state = -1
             self.show_error()
+            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
             return
         if not self.plugin_base.backend.get_connected():
             self.current_state = -1
             self.show_error()
+            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
             return
         if self.current_state == 0:
             self.plugin_base.backend.start_virtual_camera()

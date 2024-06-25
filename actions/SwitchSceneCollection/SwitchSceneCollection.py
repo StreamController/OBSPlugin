@@ -22,8 +22,7 @@ class SwitchSceneCollection(OBSActionBase):
             if not self.plugin_base.get_connected():            # self.plugin_base.obs.connect_to(host="localhost", port=4444, timeout=3, legacy=False)
                 self.reconnect_obs()
 
-        media_path = os.path.join(self.plugin_base.PATH, "assets", "scene.png")
-        self.set_media(media_path=media_path, size=0.75)
+        self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "scene.png"), size=0.75)
 
     def get_config_rows(self) -> list:
         super_rows = super().get_config_rows()

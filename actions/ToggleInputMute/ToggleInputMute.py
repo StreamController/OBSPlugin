@@ -32,20 +32,24 @@ class ToggleInputMute(OBSActionBase):
         if self.plugin_base.backend is None:
             self.current_state = -1
             self.show_error()
+            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
             return
         if not self.plugin_base.backend.get_connected():
             self.current_state = -1
             self.show_error()
+            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
             return
         if not self.get_settings().get("input"):
             self.current_state = -1
             self.show_error()
+            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
             return
 
         status = self.plugin_base.backend.get_input_muted(self.get_settings().get("input"))
         if status is None:
             self.current_state = -1
             self.show_error()
+            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
             return
         if status["muted"]:
             self.show_for_state(1)
@@ -102,6 +106,7 @@ class ToggleInputMute(OBSActionBase):
         if self.plugin_base.backend.get_connected():
             inputs = self.plugin_base.backend.get_inputs()
             if inputs is None:
+                self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
                 return
             for input in inputs:
                 self.input_model.append(input)
@@ -133,14 +138,17 @@ class ToggleInputMute(OBSActionBase):
         if self.plugin_base.backend is None:
             self.current_state = -1
             self.show_error()
+            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
             return
         if not self.plugin_base.backend.get_connected():
             self.current_state = -1
             self.show_error()
+            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
             return
 
         input_name = self.get_settings().get("input")
         if input_name in [None, ""]:
+            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
             return
 
         if self.current_state == 0:

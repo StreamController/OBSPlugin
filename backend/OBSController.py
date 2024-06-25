@@ -145,6 +145,21 @@ class OBSController(obsws):
     
     
     ## Replay Buffer
+    def get_replay_buffer_status(self):
+        """
+        outputActive: bool -> Whether replay buffer is active
+        """
+        try:
+            request = self.call(requests.GetReplayBufferStatus())
+
+            if not request.datain:
+                log.warning("Replay buffer is not enabled in OBS!")
+                return
+            else:
+                return request
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
+            log.error(e)
+
     def start_replay_buffer(self):
         try:
             return self.call(requests.StartReplayBuffer())
@@ -162,18 +177,24 @@ class OBSController(obsws):
             return self.call(requests.SaveReplayBuffer())
         except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
-    
-    def get_replay_buffer_status(self):
+
+
+    ## Virtual Camera
+    def get_virtual_camera_status(self):
         """
         outputActive: bool -> Whether replay buffer is active
         """
         try:
-            return self.call(requests.GetReplayBufferStatus())
+            request = self.call(requests.GetVirtualCamStatus())
+
+            if not request.datain:
+                log.warning("Virtual camera is not enabled in OBS!")
+                return
+            else:
+                return request
         except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
 
-
-    ## Virtual Camera
     def start_virtual_camera(self):
         try:
             return self.call(requests.StartVirtualCam())
@@ -183,15 +204,6 @@ class OBSController(obsws):
     def stop_virtual_camera(self):
         try:
             return self.call(requests.StopVirtualCam())
-        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
-            log.error(e)
-    
-    def get_virtual_camera_status(self):
-        """
-        outputActive: bool -> Whether replay buffer is active
-        """
-        try:
-            return self.call(requests.GetVirtualCamStatus())
         except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
 
@@ -206,7 +218,10 @@ class OBSController(obsws):
             log.error(e)
     
     def set_studio_mode_enabled(self, enabled:bool):
-        return self.call(requests.SetStudioModeEnabled(studioModeEnabled=enabled))
+        try:
+            return self.call(requests.SetStudioModeEnabled(studioModeEnabled=enabled))
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
+            log.error(e)
 
     def trigger_transition(self):
         try:
@@ -228,7 +243,13 @@ class OBSController(obsws):
         inputMuted: bool -> Whether the input is muted
         """
         try:
-            return self.call(requests.GetInputMute(inputName=input))
+            request = self.call(requests.GetInputMute(inputName=input))
+
+            if not request.datain:
+                log.warning("Cannot find the input!")
+                return
+            else:
+                return request
         except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
 
@@ -256,7 +277,7 @@ class OBSController(obsws):
             return self.call(requests.GetSceneItemEnabled(sceneName=sceneName, sceneItemId=sceneItemId))
         except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             if str(e) == "'sceneItemId'":
-                log.error("Cannot find the scene item!")
+                log.warning("Cannot find the scene item!")
             else:
                 log.error(e)
 

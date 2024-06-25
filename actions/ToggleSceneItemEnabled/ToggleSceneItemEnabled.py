@@ -32,21 +32,24 @@ class ToggleSceneItemEnabled(OBSActionBase):
         if self.plugin_base.backend is None:
             self.current_state = -1
             self.show_error()
+            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
             return
         if not self.plugin_base.backend.get_connected():
             self.current_state = -1
             self.show_error()
+            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
             return
         if not self.get_settings().get("item"):
             self.current_state = -1
             self.show_error()
+            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
             return
 
         status = self.plugin_base.backend.get_scene_item_enabled(self.get_settings().get("scene"), self.get_settings().get("item"))
         if status is None:
             self.current_state = -1
             self.show_error()
-            self.show_for_state(2)
+            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
             return
         if status["enabled"]:
             self.show_for_state(1)
@@ -68,8 +71,6 @@ class ToggleSceneItemEnabled(OBSActionBase):
             image = "scene_item_disabled.png"
         elif state == 1:
             image = "scene_item_enabled.png"
-        elif state == 2:
-            image = "error.png"
 
         self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", image), size=0.75)
 
@@ -133,6 +134,7 @@ class ToggleSceneItemEnabled(OBSActionBase):
         if self.plugin_base.backend.get_connected():
             items = self.plugin_base.backend.get_scene_items(scene_name)
             if items is None:
+                self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
                 return
             for item in items:
                 self.item_model.append(item)
@@ -181,17 +183,21 @@ class ToggleSceneItemEnabled(OBSActionBase):
         if self.plugin_base.backend is None:
             self.current_state = -1
             self.show_error()
+            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
             return
         if not self.plugin_base.backend.get_connected():
             self.current_state = -1
             self.show_error()
+            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
             return
 
         scene_name = self.get_settings().get("scene")
         item_name = self.get_settings().get("item")
         if scene_name in [None, ""]:
+            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
             return
         if item_name in [None, ""]:
+            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
             return
 
         if self.current_state == 0:
