@@ -76,9 +76,9 @@ class OBSActionBase(ActionBase):
     def _reconnect_obs(self):
         try:
             self.plugin_base.backend.connect_to(
-                host=self.plugin_base.get_settings().get("ip"),
-                port=self.plugin_base.get_settings().get("port"),
-                password=self.plugin_base.get_settings().get("password"),
+                host=self.plugin_base.get_settings().get("ip", "localhost"),
+                port=self.plugin_base.get_settings().get("port", 4455),
+                password=self.plugin_base.get_settings().get("password") or "",
                 timeout=3, legacy=False)
         except Exception as e:
             log.error(e)

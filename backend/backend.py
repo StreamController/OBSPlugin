@@ -10,9 +10,9 @@ class Backend(BackendBase):
         super().__init__()
         self.OBSController = OBSController()
         self.OBSController.connect_to(
-            host=self.frontend.get_settings().get("ip"),
-            port=self.frontend.get_settings().get("port"),
-            password=self.frontend.get_settings().get("password")
+            host=self.frontend.get_settings().get("ip", "localhost"),
+            port=self.frontend.get_settings().get("port", 4455),
+            password=self.frontend.get_settings().get("password") or ""
         )
 
     """
