@@ -11,6 +11,7 @@ class RecPlayPause(OBSActionBase):
         self.current_state = -1
 
     def on_ready(self):
+        self.current_state = -1
         # Connect to obs if not connected
         if self.plugin_base.backend is not None:
             if not self.plugin_base.get_connected():
@@ -22,11 +23,11 @@ class RecPlayPause(OBSActionBase):
 
     def show_current_rec_status(self, new_paused = False):
         if not self.plugin_base.get_connected():
-            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
+            self.show_error()
             return
         status = self.plugin_base.backend.get_record_status()
         if status is None:
-            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
+            self.show_error()
             return
         if status["active"] and not status["paused"]:
             self.show_for_state(1)
@@ -42,6 +43,7 @@ class RecPlayPause(OBSActionBase):
         2: Paused
         3: Stopping in progress
         """
+        self.hide_error()
         if state == self.current_state:
             return
         self.current_state = state
