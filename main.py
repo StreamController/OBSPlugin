@@ -190,7 +190,7 @@ class OBS(PluginBase):
             action_id_suffix="InputDial",
             action_name=self.lm.get("actions.input-dial.name"),
             action_support={
-                Input.Key: ActionInputSupport.UNSUPPORTED,
+                Input.Key: ActionInputSupport.UNTESTED,
                 Input.Dial: ActionInputSupport.SUPPORTED,
                 Input.Touchscreen: ActionInputSupport.UNSUPPORTED,
             }
