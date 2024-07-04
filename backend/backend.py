@@ -121,7 +121,7 @@ class Backend(BackendBase):
     def trigger_transition(self):
         self.OBSController.trigger_transition()
 
-    # Input Muting
+    # Input Mixing
     def get_inputs(self) -> list[str]:
         return self.OBSController.get_inputs()
 
@@ -135,6 +135,17 @@ class Backend(BackendBase):
 
     def set_input_muted(self, input: str, muted: bool):
         self.OBSController.set_input_muted(input, muted)
+
+    def get_input_volume(self, input: str):
+        status = self.OBSController.get_input_volume(input)
+        if status is None:
+            return
+        return {
+            "volume": status.datain["inputVolumeDb"]
+        }
+
+    def set_input_volume(self, input: str, volume: int):
+        self.OBSController.set_input_volume(input, volume)
 
     # Scenes
     def get_scene_names(self) -> list[str]:

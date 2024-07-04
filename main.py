@@ -35,6 +35,7 @@ from actions.ToggleStudioMode.ToggleStudioMode import ToggleStudioMode
 from actions.TriggerTransition.TriggerTransition import TriggerTransition
 
 from actions.ToggleInputMute.ToggleInputMute import ToggleInputMute
+from actions.InputDial.InputDial import InputDial
 
 from actions.SwitchScene.SwitchScene import SwitchScene
 from actions.ToggleSceneItemEnabled.ToggleSceneItemEnabled import ToggleSceneItemEnabled
@@ -169,7 +170,7 @@ class OBS(PluginBase):
         )
         self.add_action_holder(trigger_transition_action_holder)
 
-        # Input Muting
+        # Input mixing
         toggle_input_mute_action_holder = ActionHolder(
             plugin_base=self,
             action_base=ToggleInputMute,
@@ -182,6 +183,19 @@ class OBS(PluginBase):
             }
         )
         self.add_action_holder(toggle_input_mute_action_holder)
+
+        input_dial_holder = ActionHolder(
+            plugin_base=self,
+            action_base=InputDial,
+            action_id_suffix="InputDial",
+            action_name=self.lm.get("actions.input-dial.name"),
+            action_support={
+                Input.Key: ActionInputSupport.UNSUPPORTED,
+                Input.Dial: ActionInputSupport.SUPPORTED,
+                Input.Touchscreen: ActionInputSupport.UNSUPPORTED,
+            }
+        )
+        self.add_action_holder(input_dial_holder)
 
         # Scenes
         switch_scene_action_holder = ActionHolder(

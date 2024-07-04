@@ -16,6 +16,8 @@
 
     "actions.toggle-input-mute-row.label": "Input:",
     "actions.toggle-input-mute.name": "Toggle Input Mute",
+    "actions.input-dial-row.label": "Input:",
+    "actions.input-dial.name": "Input Dial",
 
     "actions.switch.scene-row.label": "Scene:",
     "actions.switch-scene.name": "Switch Scene",

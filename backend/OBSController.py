@@ -230,7 +230,7 @@ class OBSController(obsws):
             log.error(e)
 
 
-    ## Input Muting
+    ## Input mixer
     def get_inputs(self) -> list:
         try:
             inputs = self.call(requests.GetInputList()).getInputs()
@@ -256,6 +256,24 @@ class OBSController(obsws):
     def set_input_muted(self, input: str, muted: bool) -> None:
         try:
             self.call(requests.SetInputMute(inputName=input, inputMuted=muted))
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
+            log.error(e)
+
+    def get_input_volume(self, input: str):
+        try:
+            request = self.call(requests.GetInputVolume(inputName=input))
+
+            if not request.datain:
+                log.warning("Cannot find the input!")
+                return
+            else:
+                return request
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
+            log.error(e)
+
+    def set_input_volume(self, input: str, volume: int) -> None:
+        try:
+            self.call(requests.SetInputVolume(inputName=input, inputVolumeDb=volume))
         except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
 
