@@ -1,3 +1,12 @@
+import logging
+LOG = logging.getLogger(__name__)
+# Set the logger level to ERROR
+LOG.setLevel(logging.ERROR)
+
+# Otherwise the obswebsocket library will create a separate logger with a lower warning level spamming the console if OBS isn't running
+logging.getLogger = lambda *args, **kwargs: LOG
+
+
 from streamcontroller_plugin_tools import BackendBase
 
 from OBSController import OBSController
