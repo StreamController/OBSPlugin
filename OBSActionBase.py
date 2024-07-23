@@ -13,6 +13,9 @@ from gi.repository import Gtk, Adw
 import threading
 from loguru import logger as log
 
+import socket
+import ipaddress
+
 class OBSActionBase(ActionBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -51,10 +54,34 @@ class OBSActionBase(ActionBase):
 
     def on_change_ip(self, entry, *args):
         settings = self.plugin_base.get_settings()
-        settings["ip"] = entry.get_text()
-        self.plugin_base.set_settings(settings)
+        new_host = self.validate_ip(entry)
+        if new_host:
+            settings["ip"] = new_host
+            self.plugin_base.set_settings(settings)
+            self.reconnect_obs()
 
-        self.reconnect_obs()
+    def validate_ip(self, entry):
+        new_host = entry.get_text()
+        try:
+            # validate that it resolves
+            new_ip = socket.gethostbyname(new_host)
+        except socket.gaierror as e:
+            log.error("Unable to resolve host for OBS connection.")
+            return None
+        try:
+            # see if the host is an IP already
+            valid_ip = ipaddress.ip_address(new_host)
+            # it is, so confirm it's as-typed
+            if valid_ip.compressed != new_ip and valid_ip.exploded != new_ip:
+                log.error("Resolved IP does not match input")
+                return None # typed address does not match
+        except ValueError as e:
+            # handle edge case where socket resolves non-IPs to an IP starting with 0
+            if new_ip.startswith('0'):
+                log.error("IP does not appear valid.")
+                return None
+        log.info("IP is valid")
+        return new_ip
 
     def on_change_port(self, spinner, *args):
         settings = self.plugin_base.get_settings()
