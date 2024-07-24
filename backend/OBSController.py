@@ -335,3 +335,23 @@ class OBSController(obsws):
             self.call(requests.SetCurrentSceneCollection(sceneCollectionName=sceneCollectionName))
         except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
+
+    def get_source_filters(self, sourceName: str) -> list:
+        try:
+            source_filters = self.call(requests.GetSourceFilterList(sourceName=sourceName)).getfilters()
+            return source_filters
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
+            log.error(e)
+
+    def set_source_filter_enabled(self, sourceName: str, filterName: str, enabled: bool) -> None:
+        try:
+            self.call(requests.SetSourceFilterEnabled(sourceName=sourceName, filterName=filterName, filterEnabled=enabled))
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
+            log.error(e)
+
+    def get_source_filter(self, sourceName: str, filterName: str) -> None:
+        try:
+            source_filter = self.call(requests.GetSourceFilter(sourceName=sourceName, filterName=filterName)).datain
+            return source_filter
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
+            log.error(e)

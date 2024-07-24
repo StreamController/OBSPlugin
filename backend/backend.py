@@ -185,4 +185,13 @@ class Backend(BackendBase):
     def set_current_scene_collection(self, sceneCollectionName: str):
         return self.OBSController.set_current_scene_collection(sceneCollectionName)
     
+    def get_source_filters(self, sourceName: str) -> list:
+        return self.OBSController.get_source_filters(sourceName)
+    
+    def set_source_filter_enabled(self, sourceName: str, filterName: str, enabled: bool):
+        self.OBSController.set_source_filter_enabled(sourceName, filterName, enabled)
+
+    def get_source_filter(self, sourceName: str, filterName: str) -> None:
+        return self.OBSController.get_source_filter(sourceName, filterName)
+    
 backend = Backend()

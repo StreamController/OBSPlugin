@@ -39,6 +39,7 @@ from actions.InputDial.InputDial import InputDial
 
 from actions.SwitchScene.SwitchScene import SwitchScene
 from actions.ToggleSceneItemEnabled.ToggleSceneItemEnabled import ToggleSceneItemEnabled
+from actions.ToggleFilter.ToggleFilter import ToggleFilter
 from actions.SwitchSceneCollection.SwitchSceneCollection import SwitchSceneCollection
 
 class OBS(PluginBase):
@@ -238,6 +239,19 @@ class OBS(PluginBase):
             }
         )
         self.add_action_holder(switch_scene_collection_action_holder)
+
+        toggle_filter_holder = ActionHolder(
+            plugin_base=self,
+            action_base=ToggleFilter,
+            action_id_suffix="ToggleSceneFilter",
+            action_name=self.lm.get("actions.toggle-filter.name"),
+            action_support={
+                Input.Key: ActionInputSupport.SUPPORTED,
+                Input.Dial: ActionInputSupport.SUPPORTED,
+                Input.Touchscreen: ActionInputSupport.SUPPORTED,
+            }
+        )
+        self.add_action_holder(toggle_filter_holder)
 
         # Load custom css
         self.add_css_stylesheet(os.path.join(self.PATH, "style.css"))
