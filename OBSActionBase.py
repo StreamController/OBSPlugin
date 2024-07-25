@@ -13,8 +13,7 @@ from gi.repository import Gtk, Adw
 import threading
 from loguru import logger as log
 
-import socket
-import ipaddress
+
 
 class OBSActionBase(ActionBase):
     def __init__(self, *args, **kwargs):
@@ -23,6 +22,9 @@ class OBSActionBase(ActionBase):
         self.has_configuration = True
 
         self.status_label = Gtk.Label(label=self.plugin_base.lm.get("actions.base.status.no-connection"), css_classes=["bold", "red"])
+
+        if not self.plugin_base.backend.get_connected():
+            self.reconnect_obs()
 
     def get_config_rows(self) -> list:
         self.ip_entry = Adw.EntryRow(title=self.plugin_base.lm.get("actions.base.ip.label"))
@@ -49,39 +51,23 @@ class OBSActionBase(ActionBase):
         self.ip_entry.set_text(ip)
         self.port_spinner.set_value(port)
         self.password_entry.set_text(password)
-
-        self.plugin_base.set_settings(settings)
+        self.update_ip_warning_status()
+        self.update_status_label()
 
     def on_change_ip(self, entry, *args):
         settings = self.plugin_base.get_settings()
-        new_host = self.validate_ip(entry)
-        if new_host:
-            settings["ip"] = new_host
-            self.plugin_base.set_settings(settings)
-            self.reconnect_obs()
+        settings["ip"] = self.ip_entry.get_text().strip()
+        self.plugin_base.set_settings(settings)
 
-    def validate_ip(self, entry):
-        new_host = entry.get_text()
-        try:
-            # validate that it resolves
-            new_ip = socket.gethostbyname(new_host)
-        except socket.gaierror as e:
-            log.error("Unable to resolve host for OBS connection.")
-            return None
-        try:
-            # see if the host is an IP already
-            valid_ip = ipaddress.ip_address(new_host)
-            # it is, so confirm it's as-typed
-            if valid_ip.compressed != new_ip and valid_ip.exploded != new_ip:
-                log.error("Resolved IP does not match input")
-                return None # typed address does not match
-        except ValueError as e:
-            # handle edge case where socket resolves non-IPs to an IP starting with 0
-            if new_ip.startswith('0'):
-                log.error("IP does not appear valid.")
-                return None
-        log.info("IP is valid")
-        return new_ip
+        self.update_ip_warning_status()
+        self.reconnect_obs()
+
+    def update_ip_warning_status(self):
+        valid = self.plugin_base.backend.OBSController.validate_ip(self.ip_entry.get_text().strip())
+        if valid:
+            self.ip_entry.remove_css_class("error")
+        else:
+            self.ip_entry.add_css_class("error")
 
     def on_change_port(self, spinner, *args):
         settings = self.plugin_base.get_settings()
@@ -109,18 +95,21 @@ class OBSActionBase(ActionBase):
                 timeout=3, legacy=False)
         except Exception as e:
             log.error(e)
-        
-        self.update_status_label()
+
+        if hasattr(self, "status_label"):
+            self.update_status_label()
         
     def update_status_label(self) -> None:
         threading.Thread(target=self._update_status_label, daemon=True, name="update_status_label").start()
 
     def _update_status_label(self):
         if self.plugin_base.backend.get_connected():
+            print("connected - label")
             self.status_label.set_label(self.plugin_base.lm.get("actions.base.status.connected"))
             self.status_label.remove_css_class("red")
             self.status_label.add_css_class("green")
         else:
+            print("not connected - label")
             self.status_label.set_label(self.plugin_base.lm.get("actions.base.status.no-connection"))
             self.status_label.remove_css_class("green")
             self.status_label.add_css_class("red")

@@ -2,12 +2,21 @@ from obswebsocket import obsws, requests
 import obswebsocket
 from loguru import logger as log 
 import websocket
+import socket
+import ipaddress
+import fipv
 
 class OBSController(obsws):
     def __init__(self):
         self.connected = False
         self.event_obs: obsws = None # All events are connected to this to avoid crash if a request is made in an event
         pass
+
+    def validate_ip(self, host: str):
+        if host in ("localhost", "127.0.0.1"):
+            return True
+
+        return fipv.ipv4(host)
 
     def on_connect(self, obs):
         self.connected = True
@@ -26,12 +35,22 @@ class OBSController(obsws):
             log.error(e)
 
     def connect_to(self, host=None, port=None, timeout=1, legacy=False, **kwargs):
+        if not self.validate_ip(host):
+            log.error("Invalid IP address for OBS connection")
+            if self.connected:
+                self.disconnect()
+            if self.event_obs is not None:
+                if self.event_obs.ws is not None:
+                    self.event_obs.disconnect()
+            return False
+        
         try:
             log.debug(f"Trying to connect to obs with legacy: {legacy}")
             super().__init__(host=host, port=port, timeout=timeout, legacy=legacy, on_connect=self.on_connect, on_disconnect=self.on_disconnect, authreconnect=5, **kwargs)
             self.event_obs = obsws(host=host, port=port, timeout=timeout, legacy=legacy, on_connect=self.on_connect, on_disconnect=self.on_disconnect, authreconnect=5, **kwargs)
             self.connect()
             log.info("Successfully connected to OBS")
+            return True
         except (obswebsocket.exceptions.ConnectionFailure, ValueError) as e:
             try:
                 log.error(f"Failed to connect to OBS with legacy: {legacy}, trying with legacy: {not legacy}")
