@@ -1,7 +1,7 @@
 {
     "plugin.name": "OBS",
 
-    "actions.toggle-stream.name": "Toggle Steaming",
+    "actions.toggle-stream.name": "Toggle Streaming",
 
     "actions.toggle-record.name": "Toggle Recording",
     "actions.rec-play-pause.name": "Play/Pause Recording",
