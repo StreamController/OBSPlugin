@@ -1,6 +1,10 @@
 {
     "plugin.name": "OBS",
 
+    "actions.mixins.set.label": "\"Set\" Action:",
+    "actions.mixins.set.enable": "Activate",
+    "actions.mixins.set.disable": "Deactivate",
+
     "actions.toggle-stream.name": "Toggle Streaming",
 
     "actions.toggle-record.name": "Toggle Recording",
@@ -16,6 +20,7 @@
 
     "actions.toggle-input-mute-row.label": "Input:",
     "actions.toggle-input-mute.name": "Toggle Input Mute",
+    "actions.set-input-mute.name": "Set Input Mute",
     "actions.input-dial-row.label": "Input:",
     "actions.input-dial.name": "Input Dial",
 

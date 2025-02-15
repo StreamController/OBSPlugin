@@ -34,7 +34,7 @@ from actions.ToggleVirtualCamera.ToggleVirtualCamera import ToggleVirtualCamera
 from actions.ToggleStudioMode.ToggleStudioMode import ToggleStudioMode
 from actions.TriggerTransition.TriggerTransition import TriggerTransition
 
-from actions.ToggleInputMute.ToggleInputMute import ToggleInputMute
+from actions.InputMute import SetInputMute, ToggleInputMute
 from actions.InputDial.InputDial import InputDial
 
 from actions.SwitchScene.SwitchScene import SwitchScene
@@ -184,6 +184,19 @@ class OBS(PluginBase):
             }
         )
         self.add_action_holder(toggle_input_mute_action_holder)
+
+        set_input_mute_action_holder = ActionHolder(
+            plugin_base=self,
+            action_base=SetInputMute,
+            action_id_suffix="SetInputMute",
+            action_name=self.lm.get("actions.set-input-mute.name"),
+            action_support={
+                Input.Key: ActionInputSupport.SUPPORTED,
+                Input.Dial: ActionInputSupport.SUPPORTED,
+                Input.Touchscreen: ActionInputSupport.SUPPORTED,
+            }
+        )
+        self.add_action_holder(set_input_mute_action_holder)
 
         input_dial_holder = ActionHolder(
             plugin_base=self,

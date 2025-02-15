@@ -1,8 +1,7 @@
+from abc import ABC
+
 from plugins.com_core447_OBSPlugin.OBSActionBase import OBSActionBase
-from src.backend.DeckManagement.DeckController import DeckController
-from src.backend.PageManagement.Page import Page
-from src.backend.PluginManager.PluginBase import PluginBase
-from GtkHelper.GtkHelper import ComboRow
+from plugins.com_core447_OBSPlugin.actions.mixins import MixinBase, State
 
 import os
 import threading
@@ -13,65 +12,82 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Gtk, Adw
 
-class ToggleInputMute(OBSActionBase):
+
+class NotConnectedError(ValueError):
+    pass
+
+
+class InputNotFoundError(ValueError):
+    pass
+
+
+class InputMuteBase(OBSActionBase, MixinBase, ABC):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.current_state = -1
-        
+        self.current_state = State.UNKNOWN
+
+        self.image_path_map = {
+            State.UNKNOWN: os.path.join(self.plugin_base.PATH, "assets", "error.png"),
+            State.ENABLED: os.path.join(self.plugin_base.PATH, "assets", "input_unmuted.png"),
+            State.DISABLED: os.path.join(self.plugin_base.PATH, "assets", "input_muted.png")
+        }
+
+    @property
+    def input(self):
+        return self.get_settings().get("input")
+
+    @input.setter
+    def input(self, val):
+        settings = self.get_settings()
+        settings["input"] = val
+        self.set_settings(settings)
+
     def on_ready(self):
-        self.current_state = -1
+        self.current_state = State.UNKNOWN
         # Connect to obs if not connected
         if self.plugin_base.backend is not None:
-            if not self.plugin_base.get_connected():            # self.plugin_base.obs.connect_to(host="localhost", port=4444, timeout=3, legacy=False)
+            if not self.plugin_base.get_connected():
                 self.reconnect_obs()
 
         # Show current input mute status
         threading.Thread(target=self.show_current_input_mute_status, daemon=True, name="show_current_input_mute_status").start()
 
-    def show_current_input_mute_status(self, new_paused = False):
-        if self.plugin_base.backend is None:
-            self.current_state = -1
+    def set_media(self, *args, **kwargs):
+        super().set_media(media_path=self.image_path_map.get(self.current_state), *args, **kwargs)
+
+    def show_current_input_mute_status(self):
+        if not self.plugin_base.get_connected():
+            self.current_state = State.UNKNOWN
             self.show_error()
-            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
+            self.set_media()
             return
-        if not self.plugin_base.backend.get_connected():
-            self.current_state = -1
+        if not self.input:
+            self.current_state = State.UNKNOWN
             self.show_error()
-            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
-            return
-        if not self.get_settings().get("input"):
-            self.current_state = -1
-            self.show_error()
-            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
+            self.set_media()
             return
 
-        status = self.plugin_base.backend.get_input_muted(self.get_settings().get("input"))
+        status = self.plugin_base.backend.get_input_muted(self.input)
         if status is None:
-            self.current_state = -1
+            self.current_state = State.UNKNOWN
             self.show_error()
-            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
+            self.set_media()
             return
         if status["muted"]:
-            self.show_for_state(1)
+            self.show_for_state(State.DISABLED)
         else:
-            self.show_for_state(0)
+            self.show_for_state(State.ENABLED)
 
-    def show_for_state(self, state: int):
+    def show_for_state(self, state: State):
         """
-        0: Input unmuted
-        1: Input muted
+        State.DISABLED: Input unmuted
+        State.ENABLED: Input muted
         """
         if state == self.current_state:
             return
-        
-        self.current_state = state
-        image = "input_unmuted.png"
-        if state == 0:
-            image = "input_unmuted.png"
-        elif state == 1:
-            image = "input_muted.png"
 
-        self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", image), size=0.9)
+        self.current_state = state
+        self.set_media(size=0.9)
 
     def get_config_rows(self) -> list:
         super_rows = super().get_config_rows()
@@ -86,14 +102,14 @@ class ToggleInputMute(OBSActionBase):
 
         super_rows.append(self.input_row)
         return super_rows
-    
+
     def connect_signals(self):
         self.input_row.connect("notify::selected", self.on_mute_input)
 
     def disconnect_signals(self):
         try:
             self.input_row.disconnect_by_func(self.on_mute_input)
-        except TypeError as e:
+        except TypeError:
             pass
 
     def load_input_model(self):
@@ -118,43 +134,42 @@ class ToggleInputMute(OBSActionBase):
 
     def load_selected_device(self):
         self.disconnect_signals()
-        settings = self.get_settings()
         for i, input_name in enumerate(self.input_model):
-            if input_name.get_string() == settings.get("input"):
+            if input_name.get_string() == self.input:
                 self.input_row.set_selected(i)
                 self.connect_signals()
                 return
-            
+
         self.input_row.set_selected(Gtk.INVALID_LIST_POSITION)
         self.connect_signals()
 
     def on_mute_input(self, *args):
-        settings = self.get_settings()
         selected_index = self.input_row.get_selected()
-        settings["input"] = self.input_model[selected_index].get_string()
-        self.set_settings(settings)
+        self.input = self.input_model[selected_index].get_string()
+
+    def assert_valid_state_for_update(self):
+        if not self.plugin_base.get_connected():
+            raise NotConnectedError()
+        elif not self.input:
+            raise InputNotFoundError()
+
+        return
 
     def on_key_down(self):
-        if self.plugin_base.backend is None:
-            self.current_state = -1
+        try:
+            self.assert_valid_state_for_update()
+        except NotConnectedError:
+            self.current_state = State.UNKNOWN
             self.show_error()
             self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
             return
-        if not self.plugin_base.backend.get_connected():
-            self.current_state = -1
-            self.show_error()
+        except InputNotFoundError:
             self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
             return
 
-        input_name = self.get_settings().get("input")
-        if input_name in [None, ""]:
-            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
-            return
-
-        if self.current_state == 0:
-            self.plugin_base.backend.set_input_muted(input_name, True)
-        else:
-            self.plugin_base.backend.set_input_muted(input_name, False)
+        next_state = self.next_state()
+        # API is inverse - set_disabled, not set_enabled
+        self.plugin_base.backend.set_input_muted(self.input, not bool(next_state.value))
         self.on_tick()
 
     def on_tick(self):
