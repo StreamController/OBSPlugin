@@ -6,20 +6,17 @@ from src.backend.PluginManager.ActionInputSupport import ActionInputSupport
 
 # Import gtk modules
 import gi
+
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Gtk, Adw, Gdk
 
 import sys
 import os
-import threading
-from datetime import timedelta
 from loguru import logger as log
 
 # Add plugin to sys.paths
 sys.path.append(os.path.dirname(__file__))
-
-from OBSActionBase import OBSActionBase
 
 from actions.ToggleStream.ToggleStream import ToggleStream
 
@@ -38,9 +35,10 @@ from actions.InputMute import SetInputMute, ToggleInputMute
 from actions.InputDial.InputDial import InputDial
 
 from actions.SwitchScene.SwitchScene import SwitchScene
-from actions.ToggleSceneItemEnabled.ToggleSceneItemEnabled import ToggleSceneItemEnabled
-from actions.ToggleFilter.ToggleFilter import ToggleFilter
+from actions.SceneItem import SetSceneItemEnabled, ToggleSceneItemEnabled
+from actions.Filter import SetFilter, ToggleFilter
 from actions.SwitchSceneCollection.SwitchSceneCollection import SwitchSceneCollection
+
 
 class OBS(PluginBase):
     def __init__(self):
@@ -48,18 +46,21 @@ class OBS(PluginBase):
 
         # Launch backend
         print("launch backend")
-        self.launch_backend(os.path.join(self.PATH, "backend", "backend.py"), os.path.join(self.PATH, "backend", ".venv"), open_in_terminal=False)
+        self.launch_backend(
+            os.path.join(self.PATH, "backend", "backend.py"),
+            os.path.join(self.PATH, "backend", ".venv"),
+            open_in_terminal=False,
+        )
         print("backend launched")
 
         self.lm = self.locale_manager
         self.lm.set_to_os_default()
 
-
         self.register(
             plugin_name=self.lm.get("plugin.name"),
             github_repo="https://github.com/StreamController/OBSPlugin",
             plugin_version="1.0.1",
-            app_version="1.0.0-alpha"
+            app_version="1.0.0-alpha",
         )
 
         # Streaming
@@ -71,8 +72,8 @@ class OBS(PluginBase):
             action_support={
                 Input.Key: ActionInputSupport.SUPPORTED,
                 Input.Dial: ActionInputSupport.SUPPORTED,
-                Input.Touchscreen: ActionInputSupport.UNTESTED
-            }
+                Input.Touchscreen: ActionInputSupport.UNTESTED,
+            },
         )
         self.add_action_holder(toggle_stream_action_holder)
 
@@ -85,8 +86,8 @@ class OBS(PluginBase):
             action_support={
                 Input.Key: ActionInputSupport.SUPPORTED,
                 Input.Dial: ActionInputSupport.SUPPORTED,
-                Input.Touchscreen: ActionInputSupport.UNTESTED
-            }
+                Input.Touchscreen: ActionInputSupport.UNTESTED,
+            },
         )
         self.add_action_holder(toggle_record_action_holder)
 
@@ -98,8 +99,8 @@ class OBS(PluginBase):
             action_support={
                 Input.Key: ActionInputSupport.SUPPORTED,
                 Input.Dial: ActionInputSupport.SUPPORTED,
-                Input.Touchscreen: ActionInputSupport.UNTESTED
-            }
+                Input.Touchscreen: ActionInputSupport.UNTESTED,
+            },
         )
         self.add_action_holder(rec_play_pause_action_holder)
 
@@ -113,7 +114,7 @@ class OBS(PluginBase):
                 Input.Key: ActionInputSupport.SUPPORTED,
                 Input.Dial: ActionInputSupport.SUPPORTED,
                 Input.Touchscreen: ActionInputSupport.SUPPORTED,
-            }
+            },
         )
         self.add_action_holder(toggle_replay_buffer_action_holder)
 
@@ -126,7 +127,7 @@ class OBS(PluginBase):
                 Input.Key: ActionInputSupport.SUPPORTED,
                 Input.Dial: ActionInputSupport.SUPPORTED,
                 Input.Touchscreen: ActionInputSupport.SUPPORTED,
-            }
+            },
         )
         self.add_action_holder(save_replay_buffer_action_holder)
 
@@ -140,7 +141,7 @@ class OBS(PluginBase):
                 Input.Key: ActionInputSupport.SUPPORTED,
                 Input.Dial: ActionInputSupport.SUPPORTED,
                 Input.Touchscreen: ActionInputSupport.SUPPORTED,
-            }
+            },
         )
         self.add_action_holder(toggle_virtual_camera_action_holder)
 
@@ -154,7 +155,7 @@ class OBS(PluginBase):
                 Input.Key: ActionInputSupport.SUPPORTED,
                 Input.Dial: ActionInputSupport.SUPPORTED,
                 Input.Touchscreen: ActionInputSupport.SUPPORTED,
-            }
+            },
         )
         self.add_action_holder(toggle_studio_mode_action_holder)
 
@@ -167,7 +168,7 @@ class OBS(PluginBase):
                 Input.Key: ActionInputSupport.SUPPORTED,
                 Input.Dial: ActionInputSupport.SUPPORTED,
                 Input.Touchscreen: ActionInputSupport.SUPPORTED,
-            }
+            },
         )
         self.add_action_holder(trigger_transition_action_holder)
 
@@ -181,7 +182,7 @@ class OBS(PluginBase):
                 Input.Key: ActionInputSupport.SUPPORTED,
                 Input.Dial: ActionInputSupport.SUPPORTED,
                 Input.Touchscreen: ActionInputSupport.SUPPORTED,
-            }
+            },
         )
         self.add_action_holder(toggle_input_mute_action_holder)
 
@@ -194,7 +195,7 @@ class OBS(PluginBase):
                 Input.Key: ActionInputSupport.SUPPORTED,
                 Input.Dial: ActionInputSupport.SUPPORTED,
                 Input.Touchscreen: ActionInputSupport.SUPPORTED,
-            }
+            },
         )
         self.add_action_holder(set_input_mute_action_holder)
 
@@ -207,7 +208,7 @@ class OBS(PluginBase):
                 Input.Key: ActionInputSupport.UNTESTED,
                 Input.Dial: ActionInputSupport.SUPPORTED,
                 Input.Touchscreen: ActionInputSupport.UNSUPPORTED,
-            }
+            },
         )
         self.add_action_holder(input_dial_holder)
 
@@ -220,8 +221,8 @@ class OBS(PluginBase):
             action_support={
                 Input.Key: ActionInputSupport.SUPPORTED,
                 Input.Dial: ActionInputSupport.SUPPORTED,
-                Input.Touchscreen: ActionInputSupport.UNTESTED
-            }
+                Input.Touchscreen: ActionInputSupport.UNTESTED,
+            },
         )
         self.add_action_holder(switch_scene_action_holder)
 
@@ -235,9 +236,22 @@ class OBS(PluginBase):
                 Input.Key: ActionInputSupport.SUPPORTED,
                 Input.Dial: ActionInputSupport.SUPPORTED,
                 Input.Touchscreen: ActionInputSupport.SUPPORTED,
-            }
+            },
         )
         self.add_action_holder(toggle_scene_item_enabled_action_holder)
+
+        set_scene_item_enabled_action_holder = ActionHolder(
+            plugin_base=self,
+            action_base=SetSceneItemEnabled,
+            action_id_suffix="SetSceneItemEnabled",
+            action_name=self.lm.get("actions.set-scene-item-enabled.name"),
+            action_support={
+                Input.Key: ActionInputSupport.SUPPORTED,
+                Input.Dial: ActionInputSupport.SUPPORTED,
+                Input.Touchscreen: ActionInputSupport.SUPPORTED,
+            },
+        )
+        self.add_action_holder(set_scene_item_enabled_action_holder)
 
         # Scene Collections
         switch_scene_collection_action_holder = ActionHolder(
@@ -249,7 +263,7 @@ class OBS(PluginBase):
                 Input.Key: ActionInputSupport.SUPPORTED,
                 Input.Dial: ActionInputSupport.SUPPORTED,
                 Input.Touchscreen: ActionInputSupport.SUPPORTED,
-            }
+            },
         )
         self.add_action_holder(switch_scene_collection_action_holder)
 
@@ -262,9 +276,22 @@ class OBS(PluginBase):
                 Input.Key: ActionInputSupport.SUPPORTED,
                 Input.Dial: ActionInputSupport.SUPPORTED,
                 Input.Touchscreen: ActionInputSupport.SUPPORTED,
-            }
+            },
         )
         self.add_action_holder(toggle_filter_holder)
+
+        set_filter_holder = ActionHolder(
+            plugin_base=self,
+            action_base=SetFilter,
+            action_id_suffix="SetSceneFilter",
+            action_name=self.lm.get("actions.set-filter.name"),
+            action_support={
+                Input.Key: ActionInputSupport.SUPPORTED,
+                Input.Dial: ActionInputSupport.SUPPORTED,
+                Input.Touchscreen: ActionInputSupport.SUPPORTED,
+            },
+        )
+        self.add_action_holder(set_filter_holder)
 
         # Load custom css
         self.add_css_stylesheet(os.path.join(self.PATH, "style.css"))

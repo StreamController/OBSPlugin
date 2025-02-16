@@ -8,6 +8,7 @@ import threading
 
 # Import gtk modules
 import gi
+
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Gtk, Adw
@@ -29,7 +30,7 @@ class InputMuteBase(OBSActionBase, MixinBase, ABC):
         self.image_path_map = {
             State.UNKNOWN: os.path.join(self.plugin_base.PATH, "assets", "error.png"),
             State.ENABLED: os.path.join(self.plugin_base.PATH, "assets", "input_unmuted.png"),
-            State.DISABLED: os.path.join(self.plugin_base.PATH, "assets", "input_muted.png")
+            State.DISABLED: os.path.join(self.plugin_base.PATH, "assets", "input_muted.png"),
         }
 
     @property
@@ -50,7 +51,9 @@ class InputMuteBase(OBSActionBase, MixinBase, ABC):
                 self.reconnect_obs()
 
         # Show current input mute status
-        threading.Thread(target=self.show_current_input_mute_status, daemon=True, name="show_current_input_mute_status").start()
+        threading.Thread(
+            target=self.show_current_input_mute_status, daemon=True, name="show_current_input_mute_status"
+        ).start()
 
     def set_media(self, *args, **kwargs):
         super().set_media(media_path=self.image_path_map.get(self.current_state), *args, **kwargs)
@@ -93,7 +96,9 @@ class InputMuteBase(OBSActionBase, MixinBase, ABC):
         super_rows = super().get_config_rows()
 
         self.input_model = Gtk.StringList()
-        self.input_row = Adw.ComboRow(model=self.input_model, title=self.plugin_base.lm.get("actions.toggle-input-mute-row.label"))
+        self.input_row = Adw.ComboRow(
+            model=self.input_model, title=self.plugin_base.lm.get("actions.toggle-input-mute-row.label")
+        )
 
         self.connect_signals()
 
@@ -101,7 +106,7 @@ class InputMuteBase(OBSActionBase, MixinBase, ABC):
         self.load_configs()
 
         super_rows.append(self.input_row)
-        return super_rows
+        return super_rows + self.mixin_config_rows()
 
     def connect_signals(self):
         self.input_row.connect("notify::selected", self.on_mute_input)

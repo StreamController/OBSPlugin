@@ -2,23 +2,23 @@ from .MixinBase import MixinBase, State
 
 # Import gtk modules
 import gi
+
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Gtk, Adw
 
 
-class SetMixinGtk():
+class SetMixinGtk:
 
-    SELECTOR_MAPPING = [
-        State.ENABLED,
-        State.DISABLED
-    ]
+    SELECTOR_MAPPING = [State.ENABLED, State.DISABLED]
 
-    def __init__(self, set_mixin: 'SetMixin'):
+    def __init__(self, set_mixin: "SetMixin"):
         self.set_mixin = set_mixin
 
         self.input_model = Gtk.StringList()
-        self.input_row = Adw.ComboRow(model=self.input_model, title=set_mixin.plugin_base.lm.get("actions.mixins.set.label"))
+        self.input_row = Adw.ComboRow(
+            model=self.input_model, title=set_mixin.plugin_base.lm.get("actions.mixins.set.label")
+        )
 
         self.input_model.append(set_mixin.plugin_base.lm.get("actions.mixins.set.enable"))
         self.input_model.append(set_mixin.plugin_base.lm.get("actions.mixins.set.disable"))
@@ -53,10 +53,7 @@ class SetMixin(MixinBase):
     def next_state(self) -> State:
         return self.mode
 
-    def get_config_rows(self) -> list:
-        "Overrides OBSActionBase"
+    def mixin_config_rows(self) -> list:
         self._set_mixin_gtk = SetMixinGtk(self)
 
-        other_rows = super().get_config_rows() or []
-
-        return other_rows + self._set_mixin_gtk.get_config_rows()
+        return self._set_mixin_gtk.get_config_rows()

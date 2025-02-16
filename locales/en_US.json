@@ -19,8 +19,8 @@
     "actions.trigger-transition.name": "Trigger Transition",
 
     "actions.toggle-input-mute-row.label": "Input:",
-    "actions.toggle-input-mute.name": "Toggle Input Mute",
-    "actions.set-input-mute.name": "Set Input Mute",
+    "actions.toggle-input-mute.name": "Input Mute - Toggle",
+    "actions.set-input-mute.name": "Input Mute - Set",
     "actions.input-dial-row.label": "Input:",
     "actions.input-dial.name": "Input Dial",
 
@@ -28,7 +28,8 @@
     "actions.switch-scene.name": "Switch Scene",
 
     "actions.toggle-scene-item-enabled-row.label": "Item:",
-    "actions.toggle-scene-item-enabled.name": "Toggle Scene Item Enabled",
+    "actions.toggle-scene-item-enabled.name": "Scene Item - Toggle",
+    "actions.set-scene-item-enabled.name": "Scene Item - Set",
 
     "actions.switch-scene-collection-row.label": "Scene Collection:",
     "actions.switch-scene-collection.name": "Switch Scene Collection",
@@ -37,7 +38,8 @@
     "actions.base.status.connected": "Successfully connected to OBS.",
 
     "actions.toggle-scene-filter-enabled-row.label": "Filter:",
-    "actions.toggle-filter.name": "Toggle Filter",
+    "actions.toggle-filter.name": "Filter - Toggle",
+    "actions.set-filter.name": "Filter - Set",
 
     "actions.base.ip.label": "IP:",
     "actions.base.port.label": "Port:",

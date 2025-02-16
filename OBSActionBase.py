@@ -2,10 +2,10 @@ from src.backend.PluginManager.ActionBase import ActionBase
 from src.backend.PluginManager.PluginBase import PluginBase
 from src.backend.DeckManagement.DeckController import DeckController
 from src.backend.PageManagement.Page import Page
-from src.backend.PluginManager.PluginBase import PluginBase
 
 # Import gtk modules
 import gi
+
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Gtk, Adw
@@ -14,14 +14,15 @@ import threading
 from loguru import logger as log
 
 
-
 class OBSActionBase(ActionBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        
+
         self.has_configuration = True
 
-        self.status_label = Gtk.Label(label=self.plugin_base.lm.get("actions.base.status.no-connection"), css_classes=["bold", "red"])
+        self.status_label = Gtk.Label(
+            label=self.plugin_base.lm.get("actions.base.status.no-connection"), css_classes=["bold", "red"]
+        )
 
         if not self.plugin_base.backend.get_connected():
             self.reconnect_obs()
@@ -40,7 +41,7 @@ class OBSActionBase(ActionBase):
         self.password_entry.connect("notify::text", self.on_change_password)
 
         return [self.ip_entry, self.port_spinner, self.password_entry]
-    
+
     def load_config_defaults(self):
         settings = self.plugin_base.get_settings()
         ip = settings.setdefault("ip", "localhost")
@@ -92,13 +93,15 @@ class OBSActionBase(ActionBase):
                 host=self.plugin_base.get_settings().get("ip", "localhost"),
                 port=self.plugin_base.get_settings().get("port", 4455),
                 password=self.plugin_base.get_settings().get("password") or "",
-                timeout=3, legacy=False)
+                timeout=3,
+                legacy=False,
+            )
         except Exception as e:
             log.error(e)
 
         if hasattr(self, "status_label"):
             self.update_status_label()
-        
+
     def update_status_label(self) -> None:
         threading.Thread(target=self._update_status_label, daemon=True, name="update_status_label").start()
 

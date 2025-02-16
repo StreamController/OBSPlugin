@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 from enum import IntEnum
 
+from loguru import logger as log
+
 
 class State(IntEnum):
     """
@@ -8,13 +10,13 @@ class State(IntEnum):
     guaranteed to provide the expected semantics for DISABLED (False) and
     ENABLED (True).
     """
+
     UNKNOWN = -1
     DISABLED = 0
     ENABLED = 1
 
 
 class MixinBase(ABC):
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._current_state: State = State.UNKNOWN
@@ -25,7 +27,8 @@ class MixinBase(ABC):
 
     @current_state.setter
     def current_state(self, val: int | State):
-        if isinstance(val, int):
+        if not isinstance(val, State):
+            log.warning(f"current_state setter called with non-State type {type(val)}.")
             val = State(val)
 
         self._current_state = val
@@ -33,3 +36,6 @@ class MixinBase(ABC):
     @abstractmethod
     def next_state(self) -> State:
         pass
+
+    def mixin_config_rows(self) -> list:
+        return []
