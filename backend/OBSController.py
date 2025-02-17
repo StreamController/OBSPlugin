@@ -20,7 +20,14 @@ class OBSController(obsws):
         # to do long-term.
 
         try:
-            _ = ipaddress.ip_address(host)
+            addr = ipaddress.ip_address(host)
+
+            # And we're disallowing IPv6 entries here, for compatibility with
+            # previous implementations. Again, probably the wrong thing
+            # long-term, but implementing this way to mitigate risk while we're
+            # in a bad-push state.
+            if not addr.version == ipaddress.IPv4Address.version:
+                raise ValueError()
             return True
         except ValueError:
             return False
