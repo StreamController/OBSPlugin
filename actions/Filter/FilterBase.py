@@ -1,9 +1,10 @@
 from plugins.com_core447_OBSPlugin.OBSActionBase import OBSActionBase
+from plugins.com_core447_OBSPlugin.actions.mixins import State, MixinBase
 from src.backend.DeckManagement.DeckController import DeckController
 from src.backend.PageManagement.Page import Page
 from src.backend.PluginManager.PluginBase import PluginBase
-from GtkHelper.GtkHelper import ComboRow
 
+from abc import ABC
 import os
 import threading
 
@@ -13,13 +14,14 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Gtk, Adw
 
-class ToggleFilter(OBSActionBase):
+
+class FilterBase(OBSActionBase, MixinBase, ABC):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.current_state = -1
-        
+        self.current_state = State.UNKNOWN
+
     def on_ready(self):
-        self.current_state = -1
+        self.current_state = State.UNKNOWN
         # Connect to obs if not connected
         if self.plugin_base.backend is not None:
             if not self.plugin_base.get_connected():
@@ -28,49 +30,41 @@ class ToggleFilter(OBSActionBase):
         # Show current scene filter status
         threading.Thread(target=self.show_current_filter_status, daemon=True, name="show_current_filter_status").start()
 
-    def show_current_filter_status(self, new_paused = False):
-        if self.plugin_base.backend is None:
-            self.current_state = -1
-            self.show_error()
-            return
-        if not self.plugin_base.backend.get_connected():
-            self.current_state = -1
+    def show_current_filter_status(self):
+        if not self.plugin_base.get_connected():
+            self.current_state = State.UNKNOWN
             self.show_error()
             return
         if not self.get_settings().get("filter"):
-            self.current_state = -1
+            self.current_state = State.UNKNOWN
             self.show_error()
             return
 
         status = self.plugin_base.backend.get_source_filter(self.get_settings().get("scene"), self.get_settings().get("filter"))
         if status is None:
-            self.current_state = -1
+            self.current_state = State.UNKNOWN
             self.show_error()
             return
         if status["filterEnabled"]:
-            self.show_for_state(1)
+            self.show_for_state(State.ENABLED)
         else:
-            self.show_for_state(0)
+            self.show_for_state(State.DISABLED)
 
-    def show_for_state(self, state: int):
-        """
-        0: Filter disabled
-        1: Filter enabled
-        """
+    def show_for_state(self, state: State):
         if state == self.current_state:
             return
-        
+
         self.current_state = state
         image = "scene_item_disabled.png"
 
-        if state == -1:
+        if state == State.UNKNOWN:
             self.show_error()
         else:
             self.hide_error()
 
-        if state == 0:
+        if state == State.DISABLED:
             image = "scene_item_disabled.png"
-        elif state == 1:
+        elif state == State.ENABLED:
             image = "scene_item_enabled.png"
 
         self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", image), size=0.75)
@@ -91,8 +85,8 @@ class ToggleFilter(OBSActionBase):
 
         super_rows.append(self.scene_row)
         super_rows.append(self.filter_row)
-        return super_rows
-    
+        return super_rows + self.mixin_config_rows()
+
     def connect_signals(self):
         self.scene_row.connect("notify::selected", self.on_scene_selected)
         self.filter_row.connect("notify::selected", self.on_filter_selected)
@@ -101,7 +95,7 @@ class ToggleFilter(OBSActionBase):
         try:
             self.scene_row.disconnect_by_func(self.on_scene_selected)
             self.filter_row.disconnect_by_func(self.on_filter_selected)
-        except TypeError as e:
+        except TypeError:
             pass
 
     def load_filter_model(self):
@@ -160,7 +154,7 @@ class ToggleFilter(OBSActionBase):
                 self.connect_signals()
                 return
 
-        self.scene_row.set_selected(Gtk.INVALID_LIST_POSITION)  
+        self.scene_row.set_selected(Gtk.INVALID_LIST_POSITION)
         self.filter_row.set_selected(Gtk.INVALID_LIST_POSITION)
         self.connect_signals()
 
@@ -181,13 +175,8 @@ class ToggleFilter(OBSActionBase):
             self.set_settings(settings)
 
     def on_key_down(self):
-        if self.plugin_base.backend is None:
-            self.current_state = -1
-            self.show_error()
-            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
-            return
-        if not self.plugin_base.backend.get_connected():
-            self.current_state = -1
+        if not self.plugin_base.get_connected():
+            self.current_state = State.UNKNOWN
             self.show_error()
             self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
             return
@@ -201,10 +190,8 @@ class ToggleFilter(OBSActionBase):
             self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
             return
 
-        if self.current_state == 0:
-            self.plugin_base.backend.set_source_filter_enabled(scene_name, filter_name, True)
-        else:
-            self.plugin_base.backend.set_source_filter_enabled(scene_name, filter_name, False)
+        next_state = bool(self.next_state().value)
+        self.plugin_base.backend.set_source_filter_enabled(scene_name, filter_name, next_state)
         self.on_tick()
 
     def on_tick(self):
