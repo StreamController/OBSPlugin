@@ -1,10 +1,9 @@
 from obswebsocket import obsws, requests
 import obswebsocket
-from loguru import logger as log 
+from loguru import logger as log
 import websocket
 import socket
 import ipaddress
-import fipv
 
 class OBSController(obsws):
     def __init__(self):
@@ -16,7 +15,22 @@ class OBSController(obsws):
         if host in ("localhost", "127.0.0.1"):
             return True
 
-        return fipv.ipv4(host)
+        # We're explicitly disallowing non-localhost DNS entries here.
+        # Continuing this pattern for now, but this is probably the wrong thing
+        # to do long-term.
+
+        try:
+            addr = ipaddress.ip_address(host)
+
+            # And we're disallowing IPv6 entries here, for compatibility with
+            # previous implementations. Again, probably the wrong thing
+            # long-term, but implementing this way to mitigate risk while we're
+            # in a bad-push state.
+            if not addr.version == ipaddress.IPv4Address.version:
+                raise ValueError()
+            return True
+        except ValueError:
+            return False
 
     def on_connect(self, obs):
         self.connected = True
@@ -43,7 +57,7 @@ class OBSController(obsws):
                 if self.event_obs.ws is not None:
                     self.event_obs.disconnect()
             return False
-        
+
         try:
             log.debug(f"Trying to connect to obs with legacy: {legacy}")
             super().__init__(host=host, port=port, timeout=timeout, legacy=legacy, on_connect=self.on_connect, on_disconnect=self.on_disconnect, authreconnect=5, **kwargs)
@@ -58,7 +72,7 @@ class OBSController(obsws):
                 self.event_obs = obsws(host=host, port=port, timeout=timeout, legacy=not legacy, on_connect=self.on_connect, on_disconnect=self.on_disconnect, authreconnect=5, **kwargs)
                 self.connect()
                 log.info("Successfully connected to OBS")
-            
+
             # ValueError: invalid port etc
             except (obswebsocket.exceptions.ConnectionFailure, ValueError) as e:
                 log.error(f"Failed to connect to OBS: {e}")
@@ -101,13 +115,13 @@ class OBSController(obsws):
             return self.call(requests.GetStreamStatus())
         except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
-    
+
     def send_stream_caption(self, caption:str):
         try:
             self.call(requests.SendStreamCaption(caption=caption))
         except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
-    
+
 
     ## Recording
     def start_record(self) -> None:
@@ -115,13 +129,13 @@ class OBSController(obsws):
             return self.call(requests.StartRecord())
         except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
-    
+
     def pause_record(self):
         try:
             return self.call(requests.PauseRecord())
         except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
-    
+
     def resume_record(self):
         try:
             return self.call(requests.ResumeRecord())
@@ -136,7 +150,7 @@ class OBSController(obsws):
             return self.call(requests.StopRecord())
         except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
-    
+
     def get_record_status(self):
         """
         outputActive: bool -> Whether recording is active
@@ -149,20 +163,20 @@ class OBSController(obsws):
             return self.call(requests.GetRecordStatus())
         except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
-    
+
     def toggle_record(self):
         try:
             return self.call(requests.ToggleRecord())
         except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
-    
+
     def toggle_record_pause(self):
         try:
             return self.call(requests.ToggleRecordPause())
         except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
-    
-    
+
+
     ## Replay Buffer
     def get_replay_buffer_status(self):
         """
@@ -184,7 +198,7 @@ class OBSController(obsws):
             return self.call(requests.StartReplayBuffer())
         except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
-    
+
     def stop_replay_buffer(self):
         try:
             return self.call(requests.StopReplayBuffer())
@@ -219,7 +233,7 @@ class OBSController(obsws):
             return self.call(requests.StartVirtualCam())
         except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
-    
+
     def stop_virtual_camera(self):
         try:
             return self.call(requests.StopVirtualCam())
@@ -235,7 +249,7 @@ class OBSController(obsws):
             return self.call(requests.GetStudioModeEnabled())
         except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
-    
+
     def set_studio_mode_enabled(self, enabled:bool):
         try:
             return self.call(requests.SetStudioModeEnabled(studioModeEnabled=enabled))
@@ -347,7 +361,7 @@ class OBSController(obsws):
                 self.call(requests.SetCurrentProgramScene(sceneName=scene))
             except (obswebsocket.exceptions.MessageTimeout, websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
                 log.error(e)
-    
+
     ## Scene Collections
     def get_scene_collections(self) -> list:
         try:
