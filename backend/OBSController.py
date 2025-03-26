@@ -26,7 +26,7 @@ class OBSController(obsws):
             # previous implementations. Again, probably the wrong thing
             # long-term, but implementing this way to mitigate risk while we're
             # in a bad-push state.
-            if not addr.version == ipaddress.IPv4Address.version:
+            if addr.version == 6:
                 raise ValueError()
             return True
         except ValueError:
