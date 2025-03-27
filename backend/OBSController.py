@@ -28,7 +28,6 @@ class OBSController(obsws):
             # in a bad-push state.
             if addr.version == 6:
                 raise ValueError()
-            return True
         except ValueError:
             return False
 
