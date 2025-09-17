@@ -49,6 +49,7 @@ class ToggleRecord(OBSActionBase):
         2: Paused
         3: Stopping in progress
         """
+        self.hide_error()
         if state in [1, 2]:
             self.show_rec_time()
 

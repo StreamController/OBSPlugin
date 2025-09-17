@@ -51,6 +51,7 @@ class FilterBase(OBSActionBase, MixinBase, ABC):
             self.show_for_state(State.DISABLED)
 
     def show_for_state(self, state: State):
+        self.hide_error()
         if state == self.current_state:
             return
 

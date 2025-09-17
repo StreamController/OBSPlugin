@@ -86,6 +86,7 @@ class InputMuteBase(OBSActionBase, MixinBase, ABC):
         State.DISABLED: Input unmuted
         State.ENABLED: Input muted
         """
+        self.hide_error()
         if state == self.current_state:
             return
 

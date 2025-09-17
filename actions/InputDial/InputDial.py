@@ -70,6 +70,7 @@ class InputDial(OBSActionBase):
         self.volume = self.db_to_volume(status["volume"])
 
         # Now render the button
+        self.hide_error()
         image = "input_muted.png" if self.muted else "input_unmuted.png"
         label = f"{self.volume}%"
 
