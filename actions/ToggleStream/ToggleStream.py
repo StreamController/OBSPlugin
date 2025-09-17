@@ -48,6 +48,7 @@ class ToggleStream(OBSActionBase):
         1: Streaming Connected
         2: Streaming Reconnecting
         """
+        self.hide_error()
         if state in [1, 2]:
             self.show_stream_time()
         

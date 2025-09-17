@@ -48,6 +48,7 @@ class ToggleReplayBuffer(OBSActionBase):
         0: Replay Buffer Turned Off
         1: Replay Buffer Turned On
         """
+        self.hide_error()
         if state == self.current_state:
             return
         

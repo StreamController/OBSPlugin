@@ -48,6 +48,7 @@ class ToggleVirtualCamera(OBSActionBase):
         0: Virtual Camera Turned Off
         1: Virtual Camera Turned On
         """
+        self.hide_error()
         if state == self.current_state:
             return
         

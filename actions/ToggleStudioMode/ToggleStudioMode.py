@@ -48,6 +48,7 @@ class ToggleStudioMode(OBSActionBase):
         0: Studio Mode Turned Off
         1: Studio Mode Turned On
         """
+        self.hide_error()
         if state == self.current_state:
             return
         
