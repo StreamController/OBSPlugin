@@ -11,29 +11,15 @@ class OBSController(obsws):
         self.event_obs: obsws = None # All events are connected to this to avoid crash if a request is made in an event
         pass
 
-    def validate_ip(self, host: str):
+    def validate_dns(self, host: str) -> bool:
         """
-        Validate host address (IPv4, IPv6, or hostname).
+        Validate hostname/DNS entry.
 
-        Returns True if the host is valid, False otherwise.
+        Valid hostname: alphanumeric, hyphens, dots, max 253 chars.
+        Each label (between dots) max 63 chars, can't start/end with hyphen.
+
+        Returns True if the hostname is valid, False otherwise.
         """
-        if not host or not host.strip():
-            return False
-
-        host = host.strip()
-
-        # Handle bracket-wrapped IPv6 addresses [::1]
-        if host.startswith('[') and host.endswith(']'):
-            host = host[1:-1]
-
-        # Try to parse as IP address (IPv4 or IPv6)
-        try:
-            ipaddress.ip_address(host)
-            return True
-        except ValueError:
-            pass
-
-        # Try to validate as hostname/DNS entry
         # Valid hostname: alphanumeric, hyphens, dots, max 253 chars
         # Each label (between dots) max 63 chars, can't start/end with hyphen
         if len(host) > 253:
@@ -67,6 +53,31 @@ class OBSController(obsws):
                     return False
 
         return True
+
+    def validate_ip(self, host: str):
+        """
+        Validate host address (IPv4, IPv6, or hostname).
+
+        Returns True if the host is valid, False otherwise.
+        """
+        if not host or not host.strip():
+            return False
+
+        host = host.strip()
+
+        # Handle bracket-wrapped IPv6 addresses [::1]
+        if host.startswith('[') and host.endswith(']'):
+            host = host[1:-1]
+
+        # Try to parse as IP address (IPv4 or IPv6)
+        try:
+            ipaddress.ip_address(host)
+            return True
+        except ValueError:
+            pass
+
+        # Try to validate as hostname/DNS entry
+        return self.validate_dns(host)
 
     def on_connect(self, obs):
         self.connected = True
