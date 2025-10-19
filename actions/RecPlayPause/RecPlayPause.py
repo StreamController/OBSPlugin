@@ -5,6 +5,7 @@ from src.backend.PageManagement.Page import Page
 from src.backend.PluginManager.PluginBase import PluginBase
 import os
 
+
 class RecPlayPause(OBSActionBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -19,9 +20,13 @@ class RecPlayPause(OBSActionBase):
                 self.reconnect_obs()
 
         # Show current rec status
-        threading.Thread(target=self.show_current_rec_status, daemon=True, name="show_current_rec_status").start()
+        threading.Thread(
+            target=self.show_current_rec_status,
+            daemon=True,
+            name="show_current_rec_status",
+        ).start()
 
-    def show_current_rec_status(self, new_paused = False):
+    def show_current_rec_status(self, new_paused=False):
         if not self.plugin_base.get_connected():
             self.show_error()
             return

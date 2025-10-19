@@ -28,7 +28,9 @@ class MixinBase(ABC):
     @current_state.setter
     def current_state(self, val: int | State):
         if not val in State:
-            log.warning(f"current_state setter called with non-State type {type(val)=} {val=}.")
+            log.warning(
+                f"current_state setter called with non-State type {type(val)=} {val=}."
+            )
             val = State(val)
 
         self._current_state = val

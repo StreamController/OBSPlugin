@@ -17,11 +17,16 @@ class SetMixinGtk:
 
         self.input_model = Gtk.StringList()
         self.input_row = Adw.ComboRow(
-            model=self.input_model, title=set_mixin.plugin_base.lm.get("actions.mixins.set.label")
+            model=self.input_model,
+            title=set_mixin.plugin_base.lm.get("actions.mixins.set.label"),
         )
 
-        self.input_model.append(set_mixin.plugin_base.lm.get("actions.mixins.set.enable"))
-        self.input_model.append(set_mixin.plugin_base.lm.get("actions.mixins.set.disable"))
+        self.input_model.append(
+            set_mixin.plugin_base.lm.get("actions.mixins.set.enable")
+        )
+        self.input_model.append(
+            set_mixin.plugin_base.lm.get("actions.mixins.set.disable")
+        )
 
         self.input_row.connect("notify::selected", self.on_select)
 

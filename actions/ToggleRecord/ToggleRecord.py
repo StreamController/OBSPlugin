@@ -6,6 +6,8 @@ from src.backend.PageManagement.Page import Page
 from src.backend.PluginManager.PluginBase import PluginBase
 
 import os
+
+
 class ToggleRecord(OBSActionBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -15,13 +17,19 @@ class ToggleRecord(OBSActionBase):
         self.current_state = -1
         # Connect to obs if not connected
         if self.plugin_base.backend is not None:
-            if not self.plugin_base.get_connected():            # self.plugin_base.obs.connect_to(host="localhost", port=4444, timeout=3, legacy=False)
+            if (
+                not self.plugin_base.get_connected()
+            ):  # self.plugin_base.obs.connect_to(host="localhost", port=4444, timeout=3, legacy=False)
                 self.reconnect_obs()
 
         # Show current rec status
-        threading.Thread(target=self.show_current_rec_status, daemon=True, name="show_current_rec_status").start()
+        threading.Thread(
+            target=self.show_current_rec_status,
+            daemon=True,
+            name="show_current_rec_status",
+        ).start()
 
-    def show_current_rec_status(self, new_paused = False):
+    def show_current_rec_status(self, new_paused=False):
         if self.plugin_base.backend is None:
             self.current_state = -1
             self.show_error()
@@ -54,7 +62,7 @@ class ToggleRecord(OBSActionBase):
 
         if state == self.current_state:
             return
-        
+
         self.current_state = state
         image = "record_inactive.png"
         if state == 0:
@@ -84,11 +92,15 @@ class ToggleRecord(OBSActionBase):
 
     def show_rec_time(self):
         if not self.plugin_base.backend.get_connected():
-            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
+            self.set_media(
+                media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png")
+            )
             return
         status = self.plugin_base.backend.get_record_status()
         if status is None:
-            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
+            self.set_media(
+                media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png")
+            )
             return
         if not status["active"]:
             self.set_bottom_label(None)

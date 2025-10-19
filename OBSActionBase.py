@@ -21,17 +21,22 @@ class OBSActionBase(ActionBase):
         self.has_configuration = True
 
         self.status_label = Gtk.Label(
-            label=self.plugin_base.lm.get("actions.base.status.no-connection"), css_classes=["bold", "red"]
+            label=self.plugin_base.lm.get("actions.base.status.no-connection"),
+            css_classes=["bold", "red"],
         )
 
         if not self.plugin_base.backend.get_connected():
             self.reconnect_obs()
 
     def get_config_rows(self) -> list:
-        self.ip_entry = Adw.EntryRow(title=self.plugin_base.lm.get("actions.base.ip.label"))
+        self.ip_entry = Adw.EntryRow(
+            title=self.plugin_base.lm.get("actions.base.ip.label")
+        )
         self.port_spinner = Adw.SpinRow.new_with_range(0, 65535, 1)
         self.port_spinner.set_title(self.plugin_base.lm.get("actions.base.port.label"))
-        self.password_entry = Adw.PasswordEntryRow(title=self.plugin_base.lm.get("actions.base.password.label"))
+        self.password_entry = Adw.PasswordEntryRow(
+            title=self.plugin_base.lm.get("actions.base.password.label")
+        )
 
         self.load_config_defaults()
 
@@ -64,7 +69,9 @@ class OBSActionBase(ActionBase):
         self.reconnect_obs()
 
     def update_ip_warning_status(self):
-        valid = self.plugin_base.backend.OBSController.validate_ip(self.ip_entry.get_text().strip())
+        valid = self.plugin_base.backend.OBSController.validate_ip(
+            self.ip_entry.get_text().strip()
+        )
         if valid:
             self.ip_entry.remove_css_class("error")
         else:
@@ -85,7 +92,9 @@ class OBSActionBase(ActionBase):
         self.reconnect_obs()
 
     def reconnect_obs(self):
-        threading.Thread(target=self._reconnect_obs, daemon=True, name="reconnect_obs").start()
+        threading.Thread(
+            target=self._reconnect_obs, daemon=True, name="reconnect_obs"
+        ).start()
 
     def _reconnect_obs(self):
         try:
@@ -103,17 +112,23 @@ class OBSActionBase(ActionBase):
             self.update_status_label()
 
     def update_status_label(self) -> None:
-        threading.Thread(target=self._update_status_label, daemon=True, name="update_status_label").start()
+        threading.Thread(
+            target=self._update_status_label, daemon=True, name="update_status_label"
+        ).start()
 
     def _update_status_label(self):
         if self.plugin_base.backend.get_connected():
             print("connected - label")
-            self.status_label.set_label(self.plugin_base.lm.get("actions.base.status.connected"))
+            self.status_label.set_label(
+                self.plugin_base.lm.get("actions.base.status.connected")
+            )
             self.status_label.remove_css_class("red")
             self.status_label.add_css_class("green")
         else:
             print("not connected - label")
-            self.status_label.set_label(self.plugin_base.lm.get("actions.base.status.no-connection"))
+            self.status_label.set_label(
+                self.plugin_base.lm.get("actions.base.status.no-connection")
+            )
             self.status_label.remove_css_class("green")
             self.status_label.add_css_class("red")
 

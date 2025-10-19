@@ -10,6 +10,7 @@ import threading
 
 # Import gtk modules
 import gi
+
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Gtk, Adw
@@ -28,7 +29,11 @@ class FilterBase(OBSActionBase, MixinBase, ABC):
                 self.reconnect_obs()
 
         # Show current scene filter status
-        threading.Thread(target=self.show_current_filter_status, daemon=True, name="show_current_filter_status").start()
+        threading.Thread(
+            target=self.show_current_filter_status,
+            daemon=True,
+            name="show_current_filter_status",
+        ).start()
 
     def show_current_filter_status(self):
         if not self.plugin_base.get_connected():
@@ -40,7 +45,9 @@ class FilterBase(OBSActionBase, MixinBase, ABC):
             self.show_error()
             return
 
-        status = self.plugin_base.backend.get_source_filter(self.get_settings().get("scene"), self.get_settings().get("filter"))
+        status = self.plugin_base.backend.get_source_filter(
+            self.get_settings().get("scene"), self.get_settings().get("filter")
+        )
         if status is None:
             self.current_state = State.UNKNOWN
             self.show_error()
@@ -67,16 +74,26 @@ class FilterBase(OBSActionBase, MixinBase, ABC):
         elif state == State.ENABLED:
             image = "scene_item_enabled.png"
 
-        self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", image), size=0.75)
+        self.set_media(
+            media_path=os.path.join(self.plugin_base.PATH, "assets", image), size=0.75
+        )
 
     def get_config_rows(self) -> list:
         super_rows = super().get_config_rows()
 
         self.scene_model = Gtk.StringList()
-        self.scene_row = Adw.ComboRow(model=self.scene_model, title=self.plugin_base.lm.get("actions.switch.scene-row.label"))
+        self.scene_row = Adw.ComboRow(
+            model=self.scene_model,
+            title=self.plugin_base.lm.get("actions.switch.scene-row.label"),
+        )
 
         self.filter_model = Gtk.StringList()
-        self.filter_row = Adw.ComboRow(model=self.filter_model, title=self.plugin_base.lm.get("actions.toggle-scene-filter-enabled-row.label"))
+        self.filter_row = Adw.ComboRow(
+            model=self.filter_model,
+            title=self.plugin_base.lm.get(
+                "actions.toggle-scene-filter-enabled-row.label"
+            ),
+        )
 
         self.connect_signals()
 
@@ -178,20 +195,28 @@ class FilterBase(OBSActionBase, MixinBase, ABC):
         if not self.plugin_base.get_connected():
             self.current_state = State.UNKNOWN
             self.show_error()
-            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
+            self.set_media(
+                media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png")
+            )
             return
 
         scene_name = self.get_settings().get("scene")
         filter_name = self.get_settings().get("filter")
         if scene_name in [None, ""]:
-            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
+            self.set_media(
+                media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png")
+            )
             return
         if filter_name in [None, ""]:
-            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
+            self.set_media(
+                media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png")
+            )
             return
 
         next_state = bool(self.next_state().value)
-        self.plugin_base.backend.set_source_filter_enabled(scene_name, filter_name, next_state)
+        self.plugin_base.backend.set_source_filter_enabled(
+            scene_name, filter_name, next_state
+        )
         self.on_tick()
 
     def on_tick(self):
