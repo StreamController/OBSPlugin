@@ -22,6 +22,10 @@ class OBSController(obsws):
 
         host = host.strip()
 
+        # Handle bracket-wrapped IPv6 addresses [::1]
+        if host.startswith('[') and host.endswith(']'):
+            host = host[1:-1]
+
         # Try to parse as IP address (IPv4 or IPv6)
         try:
             ipaddress.ip_address(host)
@@ -90,18 +94,32 @@ class OBSController(obsws):
                     self.event_obs.disconnect()
             return False
 
+        # For IPv6 addresses, wrap in brackets if not already wrapped
+        # This is required for WebSocket URL construction (ws://[::1]:port)
+        connection_host = host
+        try:
+            addr = ipaddress.ip_address(host)
+            if isinstance(addr, ipaddress.IPv6Address):
+                # Only wrap if not already wrapped
+                if not (host.startswith('[') and host.endswith(']')):
+                    connection_host = f"[{host}]"
+                    log.debug(f"Wrapped IPv6 address: {host} -> {connection_host}")
+        except ValueError:
+            # Not an IP address, use as-is (hostname)
+            pass
+
         try:
             log.debug(f"Trying to connect to obs with legacy: {legacy}")
-            super().__init__(host=host, port=port, timeout=timeout, legacy=legacy, on_connect=self.on_connect, on_disconnect=self.on_disconnect, authreconnect=5, **kwargs)
-            self.event_obs = obsws(host=host, port=port, timeout=timeout, legacy=legacy, on_connect=self.on_connect, on_disconnect=self.on_disconnect, authreconnect=5, **kwargs)
+            super().__init__(host=connection_host, port=port, timeout=timeout, legacy=legacy, on_connect=self.on_connect, on_disconnect=self.on_disconnect, authreconnect=5, **kwargs)
+            self.event_obs = obsws(host=connection_host, port=port, timeout=timeout, legacy=legacy, on_connect=self.on_connect, on_disconnect=self.on_disconnect, authreconnect=5, **kwargs)
             self.connect()
             log.info("Successfully connected to OBS")
             return True
         except (obswebsocket.exceptions.ConnectionFailure, ValueError) as e:
             try:
                 log.error(f"Failed to connect to OBS with legacy: {legacy}, trying with legacy: {not legacy}")
-                super().__init__(host=host, port=port, timeout=timeout, legacy=not legacy, on_connect=self.on_connect, on_disconnect=self.on_disconnect, authreconnect=5, **kwargs)
-                self.event_obs = obsws(host=host, port=port, timeout=timeout, legacy=not legacy, on_connect=self.on_connect, on_disconnect=self.on_disconnect, authreconnect=5, **kwargs)
+                super().__init__(host=connection_host, port=port, timeout=timeout, legacy=not legacy, on_connect=self.on_connect, on_disconnect=self.on_disconnect, authreconnect=5, **kwargs)
+                self.event_obs = obsws(host=connection_host, port=port, timeout=timeout, legacy=not legacy, on_connect=self.on_connect, on_disconnect=self.on_disconnect, authreconnect=5, **kwargs)
                 self.connect()
                 log.info("Successfully connected to OBS")
 
