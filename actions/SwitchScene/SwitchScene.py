@@ -8,22 +8,18 @@ import os
 
 # Import gtk modules
 import gi
-
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Gtk, Adw
 
-
 class SwitchScene(OBSActionBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
+        
     def on_ready(self):
         # Connect to obs if not connected
         if self.plugin_base.backend is not None:
-            if (
-                not self.plugin_base.get_connected()
-            ):  # self.plugin_base.obs.connect_to(host="localhost", port=4444, timeout=3, legacy=False)
+            if not self.plugin_base.get_connected():            # self.plugin_base.obs.connect_to(host="localhost", port=4444, timeout=3, legacy=False)
                 self.reconnect_obs()
 
         media_path = os.path.join(self.plugin_base.PATH, "assets", "scene.png")
@@ -33,10 +29,7 @@ class SwitchScene(OBSActionBase):
         super_rows = super().get_config_rows()
 
         self.scene_model = Gtk.StringList()
-        self.scene_row = Adw.ComboRow(
-            model=self.scene_model,
-            title=self.plugin_base.lm.get("actions.switch.scene-row.label"),
-        )
+        self.scene_row = Adw.ComboRow(model=self.scene_model, title=self.plugin_base.lm.get("actions.switch.scene-row.label"))
 
         self.connect_signals()
 
@@ -45,7 +38,7 @@ class SwitchScene(OBSActionBase):
 
         super_rows.append(self.scene_row)
         return super_rows
-
+    
     def connect_signals(self):
         self.scene_row.connect("notify::selected", self.on_change_scene)
 
@@ -82,7 +75,7 @@ class SwitchScene(OBSActionBase):
                 self.scene_row.set_selected(i)
                 self.connect_signals()
                 return
-
+            
         self.scene_row.set_selected(Gtk.INVALID_LIST_POSITION)
         self.connect_signals()
 

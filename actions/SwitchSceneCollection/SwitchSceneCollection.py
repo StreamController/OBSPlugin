@@ -8,37 +8,27 @@ import os
 
 # Import gtk modules
 import gi
-
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Gtk, Adw
 
-
 class SwitchSceneCollection(OBSActionBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
+        
     def on_ready(self):
         # Connect to obs if not connected
         if self.plugin_base.backend is not None:
-            if (
-                not self.plugin_base.get_connected()
-            ):  # self.plugin_base.obs.connect_to(host="localhost", port=4444, timeout=3, legacy=False)
+            if not self.plugin_base.get_connected():            # self.plugin_base.obs.connect_to(host="localhost", port=4444, timeout=3, legacy=False)
                 self.reconnect_obs()
 
-        self.set_media(
-            media_path=os.path.join(self.plugin_base.PATH, "assets", "scene.png"),
-            size=0.75,
-        )
+        self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "scene.png"), size=0.75)
 
     def get_config_rows(self) -> list:
         super_rows = super().get_config_rows()
 
         self.scene_collection_model = Gtk.StringList()
-        self.scene_collection_row = Adw.ComboRow(
-            model=self.scene_collection_model,
-            title=self.plugin_base.lm.get("actions.switch-scene-collection-row.label"),
-        )
+        self.scene_collection_row = Adw.ComboRow(model=self.scene_collection_model, title=self.plugin_base.lm.get("actions.switch-scene-collection-row.label"))
 
         self.connect_signals()
 
@@ -47,17 +37,13 @@ class SwitchSceneCollection(OBSActionBase):
 
         super_rows.append(self.scene_collection_row)
         return super_rows
-
+    
     def connect_signals(self):
-        self.scene_collection_row.connect(
-            "notify::selected", self.on_change_scene_collection
-        )
+        self.scene_collection_row.connect("notify::selected", self.on_change_scene_collection)
 
     def disconnect_signals(self):
         try:
-            self.scene_collection_row.disconnect_by_func(
-                self.on_change_scene_collection
-            )
+            self.scene_collection_row.disconnect_by_func(self.on_change_scene_collection)
         except TypeError as e:
             pass
 
@@ -88,16 +74,14 @@ class SwitchSceneCollection(OBSActionBase):
                 self.scene_collection_row.set_selected(i)
                 self.connect_signals()
                 return
-
+            
         self.scene_collection_row.set_selected(Gtk.INVALID_LIST_POSITION)
         self.connect_signals()
 
     def on_change_scene_collection(self, *args):
         settings = self.get_settings()
         selected_index = self.scene_collection_row.get_selected()
-        settings["scene_collection"] = self.scene_collection_model[
-            selected_index
-        ].get_string()
+        settings["scene_collection"] = self.scene_collection_model[selected_index].get_string()
         self.set_settings(settings)
 
     def on_key_down(self):

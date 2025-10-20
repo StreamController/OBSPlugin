@@ -11,7 +11,6 @@ import threading
 
 # Import gtk modules
 import gi
-
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 from gi.repository import Gtk, Adw
@@ -24,12 +23,8 @@ class SceneItemBase(OBSActionBase, MixinBase, ABC):
 
         self.image_path_map = {
             State.UNKNOWN: os.path.join(self.plugin_base.PATH, "assets", "error.png"),
-            State.ENABLED: os.path.join(
-                self.plugin_base.PATH, "assets", "scene_item_enabled.png"
-            ),
-            State.DISABLED: os.path.join(
-                self.plugin_base.PATH, "assets", "scene_item_disabled.png"
-            ),
+            State.ENABLED: os.path.join(self.plugin_base.PATH, "assets", "scene_item_enabled.png"),
+            State.DISABLED: os.path.join(self.plugin_base.PATH, "assets", "scene_item_disabled.png")
         }
 
     def on_ready(self):
@@ -40,17 +35,11 @@ class SceneItemBase(OBSActionBase, MixinBase, ABC):
                 self.reconnect_obs()
 
         # Show current scene item status
-        threading.Thread(
-            target=self.show_current_scene_item_status,
-            daemon=True,
-            name="show_current_scene_item_status",
-        ).start()
+        threading.Thread(target=self.show_current_scene_item_status, daemon=True, name="show_current_scene_item_status").start()
 
     # Copy-paste count: 1
     def set_media(self, *args, **kwargs):
-        super().set_media(
-            media_path=self.image_path_map.get(self.current_state), *args, **kwargs
-        )
+        super().set_media(media_path=self.image_path_map.get(self.current_state), *args, **kwargs)
 
     def show_current_scene_item_status(self):
         if not self.plugin_base.get_connected():
@@ -64,9 +53,7 @@ class SceneItemBase(OBSActionBase, MixinBase, ABC):
             self.set_media()
             return
 
-        status = self.plugin_base.backend.get_scene_item_enabled(
-            self.get_settings().get("scene"), self.get_settings().get("item")
-        )
+        status = self.plugin_base.backend.get_scene_item_enabled(self.get_settings().get("scene"), self.get_settings().get("item"))
         if status is None:
             self.current_state = State.UNKNOWN
             self.show_error()
@@ -89,18 +76,10 @@ class SceneItemBase(OBSActionBase, MixinBase, ABC):
         super_rows = super().get_config_rows()
 
         self.scene_model = Gtk.StringList()
-        self.scene_row = Adw.ComboRow(
-            model=self.scene_model,
-            title=self.plugin_base.lm.get("actions.switch.scene-row.label"),
-        )
+        self.scene_row = Adw.ComboRow(model=self.scene_model, title=self.plugin_base.lm.get("actions.switch.scene-row.label"))
 
         self.item_model = Gtk.StringList()
-        self.item_row = Adw.ComboRow(
-            model=self.item_model,
-            title=self.plugin_base.lm.get(
-                "actions.toggle-scene-item-enabled-row.label"
-            ),
-        )
+        self.item_row = Adw.ComboRow(model=self.item_model, title=self.plugin_base.lm.get("actions.toggle-scene-item-enabled-row.label"))
 
         self.connect_signals()
 
@@ -153,11 +132,7 @@ class SceneItemBase(OBSActionBase, MixinBase, ABC):
         if self.plugin_base.backend.get_connected():
             items = self.plugin_base.backend.get_scene_items(scene_name)
             if items is None:
-                self.set_media(
-                    media_path=os.path.join(
-                        self.plugin_base.PATH, "assets", "error.png"
-                    )
-                )
+                self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
                 return
             for item in items:
                 self.item_model.append(item)
@@ -219,9 +194,7 @@ class SceneItemBase(OBSActionBase, MixinBase, ABC):
             return
 
         next_bool = bool(self.next_state().value)
-        self.plugin_base.backend.set_scene_item_enabled(
-            scene_name, item_name, next_bool
-        )
+        self.plugin_base.backend.set_scene_item_enabled(scene_name, item_name, next_bool)
         self.on_tick()
 
     def on_tick(self):

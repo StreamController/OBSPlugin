@@ -29,12 +29,8 @@ class InputMuteBase(OBSActionBase, MixinBase, ABC):
 
         self.image_path_map = {
             State.UNKNOWN: os.path.join(self.plugin_base.PATH, "assets", "error.png"),
-            State.ENABLED: os.path.join(
-                self.plugin_base.PATH, "assets", "input_unmuted.png"
-            ),
-            State.DISABLED: os.path.join(
-                self.plugin_base.PATH, "assets", "input_muted.png"
-            ),
+            State.ENABLED: os.path.join(self.plugin_base.PATH, "assets", "input_unmuted.png"),
+            State.DISABLED: os.path.join(self.plugin_base.PATH, "assets", "input_muted.png"),
         }
 
     @property
@@ -56,15 +52,11 @@ class InputMuteBase(OBSActionBase, MixinBase, ABC):
 
         # Show current input mute status
         threading.Thread(
-            target=self.show_current_input_mute_status,
-            daemon=True,
-            name="show_current_input_mute_status",
+            target=self.show_current_input_mute_status, daemon=True, name="show_current_input_mute_status"
         ).start()
 
     def set_media(self, *args, **kwargs):
-        super().set_media(
-            media_path=self.image_path_map.get(self.current_state), *args, **kwargs
-        )
+        super().set_media(media_path=self.image_path_map.get(self.current_state), *args, **kwargs)
 
     def show_current_input_mute_status(self):
         if not self.plugin_base.get_connected():
@@ -105,8 +97,7 @@ class InputMuteBase(OBSActionBase, MixinBase, ABC):
 
         self.input_model = Gtk.StringList()
         self.input_row = Adw.ComboRow(
-            model=self.input_model,
-            title=self.plugin_base.lm.get("actions.toggle-input-mute-row.label"),
+            model=self.input_model, title=self.plugin_base.lm.get("actions.toggle-input-mute-row.label")
         )
 
         self.connect_signals()
@@ -136,11 +127,7 @@ class InputMuteBase(OBSActionBase, MixinBase, ABC):
         if self.plugin_base.backend.get_connected():
             inputs = self.plugin_base.backend.get_inputs()
             if inputs is None:
-                self.set_media(
-                    media_path=os.path.join(
-                        self.plugin_base.PATH, "assets", "error.png"
-                    )
-                )
+                self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
                 return
             for input in inputs:
                 self.input_model.append(input)
@@ -179,14 +166,10 @@ class InputMuteBase(OBSActionBase, MixinBase, ABC):
         except NotConnectedError:
             self.current_state = State.UNKNOWN
             self.show_error()
-            self.set_media(
-                media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png")
-            )
+            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
             return
         except InputNotFoundError:
-            self.set_media(
-                media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png")
-            )
+            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
             return
 
         next_state = self.next_state()

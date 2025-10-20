@@ -5,13 +5,10 @@ import websocket
 import socket
 import ipaddress
 
-
 class OBSController(obsws):
     def __init__(self):
         self.connected = False
-        self.event_obs: obsws = (
-            None  # All events are connected to this to avoid crash if a request is made in an event
-        )
+        self.event_obs: obsws = None # All events are connected to this to avoid crash if a request is made in an event
         pass
 
     def validate_dns(self, host: str) -> bool:
@@ -33,7 +30,7 @@ class OBSController(obsws):
             return True
 
         # Split into labels and validate each
-        labels = host.split(".")
+        labels = host.split('.')
         if not labels:
             return False
 
@@ -52,7 +49,7 @@ class OBSController(obsws):
                     return False
             # Middle characters can be alphanumeric or hyphen
             for char in label:
-                if not (char.isalnum() or char == "-"):
+                if not (char.isalnum() or char == '-'):
                     return False
 
         return True
@@ -69,7 +66,7 @@ class OBSController(obsws):
         host = host.strip()
 
         # Handle bracket-wrapped IPv6 addresses [::1]
-        if host.startswith("[") and host.endswith("]"):
+        if host.startswith('[') and host.endswith(']'):
             host = host[1:-1]
 
         # Try to parse as IP address (IPv4 or IPv6)
@@ -95,11 +92,7 @@ class OBSController(obsws):
         """
         try:
             self.event_obs.register(*args, **kwargs)
-        except (
-            obswebsocket.exceptions.MessageTimeout,
-            websocket._exceptions.WebSocketConnectionClosedException,
-            KeyError,
-        ) as e:
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
 
     def connect_to(self, host=None, port=None, timeout=1, legacy=False, **kwargs):
@@ -119,7 +112,7 @@ class OBSController(obsws):
             addr = ipaddress.ip_address(host)
             if isinstance(addr, ipaddress.IPv6Address):
                 # Only wrap if not already wrapped
-                if not (host.startswith("[") and host.endswith("]")):
+                if not (host.startswith('[') and host.endswith(']')):
                     connection_host = f"[{host}]"
                     log.debug(f"Wrapped IPv6 address: {host} -> {connection_host}")
         except ValueError:
@@ -128,54 +121,16 @@ class OBSController(obsws):
 
         try:
             log.debug(f"Trying to connect to obs with legacy: {legacy}")
-            super().__init__(
-                host=connection_host,
-                port=port,
-                timeout=timeout,
-                legacy=legacy,
-                on_connect=self.on_connect,
-                on_disconnect=self.on_disconnect,
-                authreconnect=5,
-                **kwargs,
-            )
-            self.event_obs = obsws(
-                host=connection_host,
-                port=port,
-                timeout=timeout,
-                legacy=legacy,
-                on_connect=self.on_connect,
-                on_disconnect=self.on_disconnect,
-                authreconnect=5,
-                **kwargs,
-            )
+            super().__init__(host=connection_host, port=port, timeout=timeout, legacy=legacy, on_connect=self.on_connect, on_disconnect=self.on_disconnect, authreconnect=5, **kwargs)
+            self.event_obs = obsws(host=connection_host, port=port, timeout=timeout, legacy=legacy, on_connect=self.on_connect, on_disconnect=self.on_disconnect, authreconnect=5, **kwargs)
             self.connect()
             log.info("Successfully connected to OBS")
             return True
         except (obswebsocket.exceptions.ConnectionFailure, ValueError) as e:
             try:
-                log.error(
-                    f"Failed to connect to OBS with legacy: {legacy}, trying with legacy: {not legacy}"
-                )
-                super().__init__(
-                    host=connection_host,
-                    port=port,
-                    timeout=timeout,
-                    legacy=not legacy,
-                    on_connect=self.on_connect,
-                    on_disconnect=self.on_disconnect,
-                    authreconnect=5,
-                    **kwargs,
-                )
-                self.event_obs = obsws(
-                    host=connection_host,
-                    port=port,
-                    timeout=timeout,
-                    legacy=not legacy,
-                    on_connect=self.on_connect,
-                    on_disconnect=self.on_disconnect,
-                    authreconnect=5,
-                    **kwargs,
-                )
+                log.error(f"Failed to connect to OBS with legacy: {legacy}, trying with legacy: {not legacy}")
+                super().__init__(host=connection_host, port=port, timeout=timeout, legacy=not legacy, on_connect=self.on_connect, on_disconnect=self.on_disconnect, authreconnect=5, **kwargs)
+                self.event_obs = obsws(host=connection_host, port=port, timeout=timeout, legacy=not legacy, on_connect=self.on_connect, on_disconnect=self.on_disconnect, authreconnect=5, **kwargs)
                 self.connect()
                 log.info("Successfully connected to OBS")
 
@@ -183,25 +138,18 @@ class OBSController(obsws):
             except (obswebsocket.exceptions.ConnectionFailure, ValueError) as e:
                 log.error(f"Failed to connect to OBS: {e}")
 
+
     ## Streaming
     def start_stream(self) -> None:
         try:
             self.call(requests.StartStream())
-        except (
-            obswebsocket.exceptions.MessageTimeout,
-            websocket._exceptions.WebSocketConnectionClosedException,
-            KeyError,
-        ) as e:
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
 
     def stop_stream(self) -> None:
         try:
             self.call(requests.StopStream())
-        except (
-            obswebsocket.exceptions.MessageTimeout,
-            websocket._exceptions.WebSocketConnectionClosedException,
-            KeyError,
-        ) as e:
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
 
     def toggle_stream(self):
@@ -210,11 +158,7 @@ class OBSController(obsws):
         """
         try:
             self.call(requests.ToggleStream())
-        except (
-            obswebsocket.exceptions.MessageTimeout,
-            websocket._exceptions.WebSocketConnectionClosedException,
-            KeyError,
-        ) as e:
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
 
     def get_stream_status(self) -> bool:
@@ -230,52 +174,33 @@ class OBSController(obsws):
         """
         try:
             return self.call(requests.GetStreamStatus())
-        except (
-            obswebsocket.exceptions.MessageTimeout,
-            websocket._exceptions.WebSocketConnectionClosedException,
-            KeyError,
-        ) as e:
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
 
-    def send_stream_caption(self, caption: str):
+    def send_stream_caption(self, caption:str):
         try:
             self.call(requests.SendStreamCaption(caption=caption))
-        except (
-            obswebsocket.exceptions.MessageTimeout,
-            websocket._exceptions.WebSocketConnectionClosedException,
-            KeyError,
-        ) as e:
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
+
 
     ## Recording
     def start_record(self) -> None:
         try:
             return self.call(requests.StartRecord())
-        except (
-            obswebsocket.exceptions.MessageTimeout,
-            websocket._exceptions.WebSocketConnectionClosedException,
-            KeyError,
-        ) as e:
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
 
     def pause_record(self):
         try:
             return self.call(requests.PauseRecord())
-        except (
-            obswebsocket.exceptions.MessageTimeout,
-            websocket._exceptions.WebSocketConnectionClosedException,
-            KeyError,
-        ) as e:
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
 
     def resume_record(self):
         try:
             return self.call(requests.ResumeRecord())
-        except (
-            obswebsocket.exceptions.MessageTimeout,
-            websocket._exceptions.WebSocketConnectionClosedException,
-            KeyError,
-        ) as e:
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
 
     def stop_recording(self) -> None:
@@ -284,11 +209,7 @@ class OBSController(obsws):
         """
         try:
             return self.call(requests.StopRecord())
-        except (
-            obswebsocket.exceptions.MessageTimeout,
-            websocket._exceptions.WebSocketConnectionClosedException,
-            KeyError,
-        ) as e:
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
 
     def get_record_status(self):
@@ -301,32 +222,21 @@ class OBSController(obsws):
         """
         try:
             return self.call(requests.GetRecordStatus())
-        except (
-            obswebsocket.exceptions.MessageTimeout,
-            websocket._exceptions.WebSocketConnectionClosedException,
-            KeyError,
-        ) as e:
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
 
     def toggle_record(self):
         try:
             return self.call(requests.ToggleRecord())
-        except (
-            obswebsocket.exceptions.MessageTimeout,
-            websocket._exceptions.WebSocketConnectionClosedException,
-            KeyError,
-        ) as e:
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
 
     def toggle_record_pause(self):
         try:
             return self.call(requests.ToggleRecordPause())
-        except (
-            obswebsocket.exceptions.MessageTimeout,
-            websocket._exceptions.WebSocketConnectionClosedException,
-            KeyError,
-        ) as e:
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
+
 
     ## Replay Buffer
     def get_replay_buffer_status(self):
@@ -341,42 +251,27 @@ class OBSController(obsws):
                 return
             else:
                 return request
-        except (
-            obswebsocket.exceptions.MessageTimeout,
-            websocket._exceptions.WebSocketConnectionClosedException,
-            KeyError,
-        ) as e:
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
 
     def start_replay_buffer(self):
         try:
             return self.call(requests.StartReplayBuffer())
-        except (
-            obswebsocket.exceptions.MessageTimeout,
-            websocket._exceptions.WebSocketConnectionClosedException,
-            KeyError,
-        ) as e:
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
 
     def stop_replay_buffer(self):
         try:
             return self.call(requests.StopReplayBuffer())
-        except (
-            obswebsocket.exceptions.MessageTimeout,
-            websocket._exceptions.WebSocketConnectionClosedException,
-            KeyError,
-        ) as e:
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
 
     def save_replay_buffer(self):
         try:
             return self.call(requests.SaveReplayBuffer())
-        except (
-            obswebsocket.exceptions.MessageTimeout,
-            websocket._exceptions.WebSocketConnectionClosedException,
-            KeyError,
-        ) as e:
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
+
 
     ## Virtual Camera
     def get_virtual_camera_status(self):
@@ -391,31 +286,19 @@ class OBSController(obsws):
                 return
             else:
                 return request
-        except (
-            obswebsocket.exceptions.MessageTimeout,
-            websocket._exceptions.WebSocketConnectionClosedException,
-            KeyError,
-        ) as e:
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
 
     def start_virtual_camera(self):
         try:
             return self.call(requests.StartVirtualCam())
-        except (
-            obswebsocket.exceptions.MessageTimeout,
-            websocket._exceptions.WebSocketConnectionClosedException,
-            KeyError,
-        ) as e:
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
 
     def stop_virtual_camera(self):
         try:
             return self.call(requests.StopVirtualCam())
-        except (
-            obswebsocket.exceptions.MessageTimeout,
-            websocket._exceptions.WebSocketConnectionClosedException,
-            KeyError,
-        ) as e:
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
 
     ## Studio Mode
@@ -425,43 +308,28 @@ class OBSController(obsws):
         """
         try:
             return self.call(requests.GetStudioModeEnabled())
-        except (
-            obswebsocket.exceptions.MessageTimeout,
-            websocket._exceptions.WebSocketConnectionClosedException,
-            KeyError,
-        ) as e:
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
 
-    def set_studio_mode_enabled(self, enabled: bool):
+    def set_studio_mode_enabled(self, enabled:bool):
         try:
             return self.call(requests.SetStudioModeEnabled(studioModeEnabled=enabled))
-        except (
-            obswebsocket.exceptions.MessageTimeout,
-            websocket._exceptions.WebSocketConnectionClosedException,
-            KeyError,
-        ) as e:
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
 
     def trigger_transition(self):
         try:
             return self.call(requests.TriggerStudioModeTransition())
-        except (
-            obswebsocket.exceptions.MessageTimeout,
-            websocket._exceptions.WebSocketConnectionClosedException,
-            KeyError,
-        ) as e:
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
+
 
     ## Input mixer
     def get_inputs(self) -> list:
         try:
             inputs = self.call(requests.GetInputList()).getInputs()
             return [input["inputName"] for input in inputs]
-        except (
-            obswebsocket.exceptions.MessageTimeout,
-            websocket._exceptions.WebSocketConnectionClosedException,
-            KeyError,
-        ) as e:
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
 
     def get_input_muted(self, input: str) -> None:
@@ -476,21 +344,13 @@ class OBSController(obsws):
                 return
             else:
                 return request
-        except (
-            obswebsocket.exceptions.MessageTimeout,
-            websocket._exceptions.WebSocketConnectionClosedException,
-            KeyError,
-        ) as e:
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
 
     def set_input_muted(self, input: str, muted: bool) -> None:
         try:
             self.call(requests.SetInputMute(inputName=input, inputMuted=muted))
-        except (
-            obswebsocket.exceptions.MessageTimeout,
-            websocket._exceptions.WebSocketConnectionClosedException,
-            KeyError,
-        ) as e:
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
 
     def get_input_volume(self, input: str):
@@ -502,35 +362,22 @@ class OBSController(obsws):
                 return
             else:
                 return request
-        except (
-            obswebsocket.exceptions.MessageTimeout,
-            websocket._exceptions.WebSocketConnectionClosedException,
-            KeyError,
-        ) as e:
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
 
     def set_input_volume(self, input: str, volume: int) -> None:
         try:
             self.call(requests.SetInputVolume(inputName=input, inputVolumeDb=volume))
-        except (
-            obswebsocket.exceptions.MessageTimeout,
-            websocket._exceptions.WebSocketConnectionClosedException,
-            KeyError,
-        ) as e:
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
+
 
     ## Scene Items
     def get_scene_items(self, sceneName: str) -> list:
         try:
-            sceneItems = self.call(
-                requests.GetSceneItemList(sceneName=sceneName)
-            ).getSceneItems()
+            sceneItems = self.call(requests.GetSceneItemList(sceneName=sceneName)).getSceneItems()
             return [sceneItem["sourceName"] for sceneItem in sceneItems]
-        except (
-            obswebsocket.exceptions.MessageTimeout,
-            websocket._exceptions.WebSocketConnectionClosedException,
-            KeyError,
-        ) as e:
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
 
     def get_scene_item_enabled(self, sceneName: str, sourceName: str) -> None:
@@ -538,145 +385,74 @@ class OBSController(obsws):
         sceneItemEnabled: bool -> Whether the scene item is enabled. true for enabled, false for disabled
         """
         try:
-            sceneItemId = self.call(
-                requests.GetSceneItemId(sceneName=sceneName, sourceName=sourceName)
-            ).getSceneItemId()
-            return self.call(
-                requests.GetSceneItemEnabled(
-                    sceneName=sceneName, sceneItemId=sceneItemId
-                )
-            )
-        except (
-            obswebsocket.exceptions.MessageTimeout,
-            websocket._exceptions.WebSocketConnectionClosedException,
-            KeyError,
-        ) as e:
+            sceneItemId = self.call(requests.GetSceneItemId(sceneName=sceneName, sourceName=sourceName)).getSceneItemId()
+            return self.call(requests.GetSceneItemEnabled(sceneName=sceneName, sceneItemId=sceneItemId))
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             if str(e) == "'sceneItemId'":
                 log.warning("Cannot find the scene item!")
             else:
                 log.error(e)
 
-    def set_scene_item_enabled(
-        self, sceneName: str, sourceName: str, enabled: bool
-    ) -> None:
+    def set_scene_item_enabled(self, sceneName: str, sourceName: str, enabled: bool) -> None:
         try:
-            sceneItemId = self.call(
-                requests.GetSceneItemId(sceneName=sceneName, sourceName=sourceName)
-            ).getSceneItemId()
-            self.call(
-                requests.SetSceneItemEnabled(
-                    sceneName=sceneName,
-                    sceneItemId=sceneItemId,
-                    sceneItemEnabled=enabled,
-                )
-            )
-        except (
-            obswebsocket.exceptions.MessageTimeout,
-            websocket._exceptions.WebSocketConnectionClosedException,
-            KeyError,
-        ) as e:
+            sceneItemId = self.call(requests.GetSceneItemId(sceneName=sceneName, sourceName=sourceName)).getSceneItemId()
+            self.call(requests.SetSceneItemEnabled(sceneName=sceneName, sceneItemId=sceneItemId, sceneItemEnabled=enabled))
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
+
 
     ## Scenes
     def get_scenes(self) -> list:
         try:
             scenes = self.call(requests.GetSceneList()).getScenes()
             return [scene["sceneName"] for scene in scenes]
-        except (
-            obswebsocket.exceptions.MessageTimeout,
-            websocket._exceptions.WebSocketConnectionClosedException,
-            KeyError,
-        ) as e:
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
 
     ## Credit for Studio Mode Preview fix: Rinma (https://github.com/Rinma)
-    def switch_to_scene(self, scene: str) -> None:
+    def switch_to_scene(self, scene:str) -> None:
         studioModeStatus = self.get_studio_mode_enabled()
         if studioModeStatus.datain["studioModeEnabled"]:
             try:
                 self.call(requests.SetCurrentPreviewScene(sceneName=scene))
-            except (
-                obswebsocket.exceptions.MessageTimeout,
-                websocket._exceptions.WebSocketConnectionClosedException,
-                KeyError,
-            ) as e:
+            except (obswebsocket.exceptions.MessageTimeout, websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
                 log.error(e)
         else:
             try:
                 self.call(requests.SetCurrentProgramScene(sceneName=scene))
-            except (
-                obswebsocket.exceptions.MessageTimeout,
-                websocket._exceptions.WebSocketConnectionClosedException,
-                KeyError,
-            ) as e:
+            except (obswebsocket.exceptions.MessageTimeout, websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
                 log.error(e)
 
     ## Scene Collections
     def get_scene_collections(self) -> list:
         try:
-            sceneCollections = self.call(
-                requests.GetSceneCollectionList()
-            ).getSceneCollections()
+            sceneCollections = self.call(requests.GetSceneCollectionList()).getSceneCollections()
             return sceneCollections
-        except (
-            obswebsocket.exceptions.MessageTimeout,
-            websocket._exceptions.WebSocketConnectionClosedException,
-            KeyError,
-        ) as e:
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
 
     def set_current_scene_collection(self, sceneCollectionName: str) -> None:
         try:
-            self.call(
-                requests.SetCurrentSceneCollection(
-                    sceneCollectionName=sceneCollectionName
-                )
-            )
-        except (
-            obswebsocket.exceptions.MessageTimeout,
-            websocket._exceptions.WebSocketConnectionClosedException,
-            KeyError,
-        ) as e:
+            self.call(requests.SetCurrentSceneCollection(sceneCollectionName=sceneCollectionName))
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
 
     def get_source_filters(self, sourceName: str) -> list:
         try:
-            source_filters = self.call(
-                requests.GetSourceFilterList(sourceName=sourceName)
-            ).getfilters()
+            source_filters = self.call(requests.GetSourceFilterList(sourceName=sourceName)).getfilters()
             return source_filters
-        except (
-            obswebsocket.exceptions.MessageTimeout,
-            websocket._exceptions.WebSocketConnectionClosedException,
-            KeyError,
-        ) as e:
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
 
-    def set_source_filter_enabled(
-        self, sourceName: str, filterName: str, enabled: bool
-    ) -> None:
+    def set_source_filter_enabled(self, sourceName: str, filterName: str, enabled: bool) -> None:
         try:
-            self.call(
-                requests.SetSourceFilterEnabled(
-                    sourceName=sourceName, filterName=filterName, filterEnabled=enabled
-                )
-            )
-        except (
-            obswebsocket.exceptions.MessageTimeout,
-            websocket._exceptions.WebSocketConnectionClosedException,
-            KeyError,
-        ) as e:
+            self.call(requests.SetSourceFilterEnabled(sourceName=sourceName, filterName=filterName, filterEnabled=enabled))
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
 
     def get_source_filter(self, sourceName: str, filterName: str) -> None:
         try:
-            source_filter = self.call(
-                requests.GetSourceFilter(sourceName=sourceName, filterName=filterName)
-            ).datain
+            source_filter = self.call(requests.GetSourceFilter(sourceName=sourceName, filterName=filterName)).datain
             return source_filter
-        except (
-            obswebsocket.exceptions.MessageTimeout,
-            websocket._exceptions.WebSocketConnectionClosedException,
-            KeyError,
-        ) as e:
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
