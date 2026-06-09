@@ -35,6 +35,34 @@ class Backend(BackendBase):
     def connect_to(self, *args, **kwargs):
         self.OBSController.connect_to(*args, **kwargs)
 
+    def mark_disconnected(self):
+        """Force the connection state to disconnected so the frontend retries the connection.
+
+        The websocket library does not always report a closed OBS reliably (on_disconnect is
+        not guaranteed to fire), so we additionally treat any missing/empty response as a lost
+        connection. The frontend tick loop then reconnects on its own.
+        """
+        self.OBSController.connected = False
+
+    def build_status_dict(self, status, key_mapping: dict) -> dict:
+        """Build a response dict from an OBS request, mapping result keys to OBS response keys.
+
+        Returns None (and marks the connection as lost) when the response is missing or its data
+        is empty, which is what happens while OBS is closed. This both drives the reconnect and
+        avoids a KeyError crashing the action tick.
+        """
+        if status is None:
+            self.mark_disconnected()
+            return None
+        response_data = status.datain
+        result = {}
+        for result_key, obs_key in key_mapping.items():
+            if obs_key not in response_data:
+                self.mark_disconnected()
+                return None
+            result[result_key] = response_data[obs_key]
+        return result
+
     def get_controller(self) -> OBSController:
         """
         Calling methods on the returned controller will raise a circular reference error from Pyro
@@ -44,18 +72,17 @@ class Backend(BackendBase):
     # Streaming
     def get_stream_status(self) -> dict:
         status = self.OBSController.get_stream_status()
-        if status is None:
-            return
-        return {
-            "active": status.datain["outputActive"],
-            "reconnecting": status.datain["outputReconnecting"],
-            "timecode": status.datain["outputTimecode"],
-            "duration": status.datain["outputDuration"],
-            "congestion": status.datain["outputCongestion"],
-            "bytes": status.datain["outputBytes"],
-            "skipped_frames": status.datain["outputSkippedFrames"],
-            "total_frames": status.datain["outputTotalFrames"]
+        key_mapping = {
+            "active": "outputActive",
+            "reconnecting": "outputReconnecting",
+            "timecode": "outputTimecode",
+            "duration": "outputDuration",
+            "congestion": "outputCongestion",
+            "bytes": "outputBytes",
+            "skipped_frames": "outputSkippedFrames",
+            "total_frames": "outputTotalFrames"
         }
+        return self.build_status_dict(status, key_mapping)
 
     def toggle_stream(self):
         status = self.OBSController.toggle_stream()
@@ -66,15 +93,14 @@ class Backend(BackendBase):
     # Recording
     def get_record_status(self) -> dict:
         status = self.OBSController.get_record_status()
-        if status is None:
-            return
-        return {
-            "active": status.datain["outputActive"],
-            "paused": status.datain["outputPaused"],
-            "timecode": status.datain["outputTimecode"],
-            "duration": status.datain["outputDuration"],
-            "bytes": status.datain["outputBytes"]
+        key_mapping = {
+            "active": "outputActive",
+            "paused": "outputPaused",
+            "timecode": "outputTimecode",
+            "duration": "outputDuration",
+            "bytes": "outputBytes"
         }
+        return self.build_status_dict(status, key_mapping)
 
     def toggle_record(self):
         self.OBSController.toggle_record()
@@ -85,11 +111,7 @@ class Backend(BackendBase):
     # Replay Buffer
     def get_replay_buffer_status(self) -> dict:
         status = self.OBSController.get_replay_buffer_status()
-        if status is None:
-            return
-        return {
-            "active": status.datain["outputActive"]
-        }
+        return self.build_status_dict(status, {"active": "outputActive"})
 
     def start_replay_buffer(self):
         self.OBSController.start_replay_buffer()
@@ -103,11 +125,7 @@ class Backend(BackendBase):
     # Virtual Camera
     def get_virtual_camera_status(self) -> dict:
         status = self.OBSController.get_virtual_camera_status()
-        if status is None:
-            return
-        return {
-            "active": status.datain["outputActive"]
-        }
+        return self.build_status_dict(status, {"active": "outputActive"})
 
     def start_virtual_camera(self):
         self.OBSController.start_virtual_camera()
@@ -118,11 +136,7 @@ class Backend(BackendBase):
     # Studio Mode
     def get_studio_mode_enabled(self) -> dict:
         status = self.OBSController.get_studio_mode_enabled()
-        if status is None:
-            return
-        return {
-            "active": status.datain["studioModeEnabled"]
-        }
+        return self.build_status_dict(status, {"active": "studioModeEnabled"})
 
     def set_studio_mode_enabled(self, enabled: bool):
         self.OBSController.set_studio_mode_enabled(enabled)
@@ -136,22 +150,14 @@ class Backend(BackendBase):
 
     def get_input_muted(self, input: str):
         status = self.OBSController.get_input_muted(input)
-        if status is None:
-            return
-        return {
-            "muted": status.datain["inputMuted"]
-        }
+        return self.build_status_dict(status, {"muted": "inputMuted"})
 
     def set_input_muted(self, input: str, muted: bool):
         self.OBSController.set_input_muted(input, muted)
 
     def get_input_volume(self, input: str):
         status = self.OBSController.get_input_volume(input)
-        if status is None:
-            return
-        return {
-            "volume": status.datain["inputVolumeDb"]
-        }
+        return self.build_status_dict(status, {"volume": "inputVolumeDb"})
 
     def set_input_volume(self, input: str, volume: int):
         self.OBSController.set_input_volume(input, volume)
@@ -169,11 +175,7 @@ class Backend(BackendBase):
 
     def get_scene_item_enabled(self, sceneName: str, sourceName: str):
         status = self.OBSController.get_scene_item_enabled(sceneName, sourceName)
-        if status is None:
-            return
-        return {
-            "enabled": status.datain["sceneItemEnabled"]
-        }
+        return self.build_status_dict(status, {"enabled": "sceneItemEnabled"})
 
     def set_scene_item_enabled(self, sceneName: str, sourceName: str, enabled: bool):
         self.OBSController.set_scene_item_enabled(sceneName, sourceName, enabled)

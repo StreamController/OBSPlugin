@@ -76,6 +76,8 @@ class InputMuteBase(OBSActionBase, MixinBase, ABC):
             self.show_error()
             self.set_media()
             return
+        # Connection is healthy again: clear any error overlay left by a previous show_error().
+        self.hide_error()
         if status["muted"]:
             self.show_for_state(State.DISABLED)
         else:
@@ -178,6 +180,7 @@ class InputMuteBase(OBSActionBase, MixinBase, ABC):
         self.on_tick()
 
     def on_tick(self):
+        self.try_reconnect_if_disconnected()
         self.show_current_input_mute_status()
 
     def reconnect_obs(self):

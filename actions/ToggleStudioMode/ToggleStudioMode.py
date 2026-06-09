@@ -38,6 +38,8 @@ class ToggleStudioMode(OBSActionBase):
             self.show_error()
             self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
             return
+        # Connection is healthy again: clear any error overlay left by a previous show_error().
+        self.hide_error()
         if status["active"]:
             self.show_for_state(1)
         else:
@@ -78,4 +80,5 @@ class ToggleStudioMode(OBSActionBase):
         self.on_tick()
 
     def on_tick(self):
+        self.try_reconnect_if_disconnected()
         self.show_current_studio_mode_status()

@@ -35,6 +35,9 @@ class ToggleRecord(OBSActionBase):
             self.current_state = -1
             self.show_error()
             return
+        # The connection is healthy again, so clear any error overlay set by a previous show_error().
+        # Without this the error triangle stays on top of the normal icon even after recovery.
+        self.hide_error()
         if status["paused"]:
             self.show_for_state(2)
         elif status["active"]:
@@ -80,6 +83,7 @@ class ToggleRecord(OBSActionBase):
         self.on_tick()
 
     def on_tick(self):
+        self.try_reconnect_if_disconnected()
         self.show_current_rec_status()
 
     def show_rec_time(self):

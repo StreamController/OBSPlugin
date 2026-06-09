@@ -69,6 +69,9 @@ class InputDial(OBSActionBase):
             return
         self.volume = self.db_to_volume(status["volume"])
 
+        # Connection is healthy again: clear any error overlay left by a previous show_error().
+        self.hide_error()
+
         # Now render the button
         image = "input_muted.png" if self.muted else "input_unmuted.png"
         label = f"{self.volume}%"
@@ -196,6 +199,7 @@ class InputDial(OBSActionBase):
         self.on_tick()
 
     def on_tick(self):
+        self.try_reconnect_if_disconnected()
         self.show_current_input_volume()
 
     def reconnect_obs(self):

@@ -195,6 +195,7 @@ class FilterBase(OBSActionBase, MixinBase, ABC):
         self.on_tick()
 
     def on_tick(self):
+        self.try_reconnect_if_disconnected()
         self.show_current_filter_status()
 
     def reconnect_obs(self):

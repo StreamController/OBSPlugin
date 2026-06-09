@@ -11,7 +11,14 @@ gi.require_version("Adw", "1")
 from gi.repository import Gtk, Adw
 
 import threading
+import time
 from loguru import logger as log
+
+
+# When OBS is not reachable we retry the connection from the tick loop so the icon recovers
+# automatically once OBS is started again. Throttle the attempts so that a tick firing every
+# second does not pile up a new (3 second timeout) connection attempt on top of the previous one.
+RECONNECT_THROTTLE_SECONDS = 5.0
 
 
 class OBSActionBase(ActionBase):
@@ -19,6 +26,8 @@ class OBSActionBase(ActionBase):
         super().__init__(*args, **kwargs)
 
         self.has_configuration = True
+
+        self.last_reconnect_attempt = 0.0
 
         self.status_label = Gtk.Label(
             label=self.plugin_base.lm.get("actions.base.status.no-connection"), css_classes=["bold", "red"]
@@ -82,6 +91,26 @@ class OBSActionBase(ActionBase):
         settings["password"] = entry.get_text()
         self.plugin_base.set_settings(settings)
 
+        self.reconnect_obs()
+
+    def try_reconnect_if_disconnected(self):
+        """Trigger a throttled background reconnect when OBS is not connected.
+
+        Called from the tick loop so that the action recovers on its own once OBS is reachable
+        again instead of being stuck on the error icon until the page is reloaded.
+        """
+        backend = self.plugin_base.backend
+        if backend is None:
+            return
+        if backend.get_connected():
+            return
+
+        now = time.time()
+        seconds_since_last_attempt = now - self.last_reconnect_attempt
+        if seconds_since_last_attempt < RECONNECT_THROTTLE_SECONDS:
+            return
+
+        self.last_reconnect_attempt = now
         self.reconnect_obs()
 
     def reconnect_obs(self):

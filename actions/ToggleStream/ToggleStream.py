@@ -78,6 +78,7 @@ class ToggleStream(OBSActionBase):
         self.on_tick()
     
     def on_tick(self):
+        self.try_reconnect_if_disconnected()
         self.show_current_stream_status()
     
     def show_stream_time(self):

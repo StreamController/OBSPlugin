@@ -65,4 +65,5 @@ class RecPlayPause(OBSActionBase):
         self.plugin_base.backend.toggle_record_pause()
 
     def on_tick(self):
+        self.try_reconnect_if_disconnected()
         self.show_current_rec_status()

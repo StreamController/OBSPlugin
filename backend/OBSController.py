@@ -5,6 +5,11 @@ import websocket
 import socket
 import ipaddress
 
+# We drive reconnection ourselves from the action tick loop (see OBSActionBase). The websocket
+# library's own auto-reconnect is therefore disabled, otherwise its background reconnect thread
+# competes with ours and can leave the connection state inconsistent (stuck on the error icon).
+LIBRARY_AUTORECONNECT_DISABLED = 0
+
 class OBSController(obsws):
     def __init__(self):
         self.connected = False
@@ -48,6 +53,24 @@ class OBSController(obsws):
         except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
 
+    def teardown_existing_connection(self):
+        """Cleanly stop a previous connection's receive thread and socket before reconnecting.
+
+        Without this a stale receive thread can keep running against the old (dead) socket after
+        we build a new connection, which leaves the connection state unreliable.
+        """
+        existing_recv_thread = getattr(self, "thread_recv", None)
+        if existing_recv_thread is not None:
+            existing_recv_thread.running = False
+
+        existing_ws = getattr(self, "ws", None)
+        if existing_ws is not None:
+            try:
+                if existing_ws.connected:
+                    existing_ws.close()
+            except Exception as e:
+                log.error(e)
+
     def connect_to(self, host=None, port=None, timeout=1, legacy=False, **kwargs):
         if not self.validate_ip(host):
             log.error("Invalid IP address for OBS connection")
@@ -60,16 +83,17 @@ class OBSController(obsws):
 
         try:
             log.debug(f"Trying to connect to obs with legacy: {legacy}")
-            super().__init__(host=host, port=port, timeout=timeout, legacy=legacy, on_connect=self.on_connect, on_disconnect=self.on_disconnect, authreconnect=5, **kwargs)
-            self.event_obs = obsws(host=host, port=port, timeout=timeout, legacy=legacy, on_connect=self.on_connect, on_disconnect=self.on_disconnect, authreconnect=5, **kwargs)
+            self.teardown_existing_connection()
+            super().__init__(host=host, port=port, timeout=timeout, legacy=legacy, on_connect=self.on_connect, on_disconnect=self.on_disconnect, authreconnect=LIBRARY_AUTORECONNECT_DISABLED, **kwargs)
+            self.event_obs = obsws(host=host, port=port, timeout=timeout, legacy=legacy, on_connect=self.on_connect, on_disconnect=self.on_disconnect, authreconnect=LIBRARY_AUTORECONNECT_DISABLED, **kwargs)
             self.connect()
             log.info("Successfully connected to OBS")
             return True
         except (obswebsocket.exceptions.ConnectionFailure, ValueError) as e:
             try:
                 log.error(f"Failed to connect to OBS with legacy: {legacy}, trying with legacy: {not legacy}")
-                super().__init__(host=host, port=port, timeout=timeout, legacy=not legacy, on_connect=self.on_connect, on_disconnect=self.on_disconnect, authreconnect=5, **kwargs)
-                self.event_obs = obsws(host=host, port=port, timeout=timeout, legacy=not legacy, on_connect=self.on_connect, on_disconnect=self.on_disconnect, authreconnect=5, **kwargs)
+                super().__init__(host=host, port=port, timeout=timeout, legacy=not legacy, on_connect=self.on_connect, on_disconnect=self.on_disconnect, authreconnect=LIBRARY_AUTORECONNECT_DISABLED, **kwargs)
+                self.event_obs = obsws(host=host, port=port, timeout=timeout, legacy=not legacy, on_connect=self.on_connect, on_disconnect=self.on_disconnect, authreconnect=LIBRARY_AUTORECONNECT_DISABLED, **kwargs)
                 self.connect()
                 log.info("Successfully connected to OBS")
 
