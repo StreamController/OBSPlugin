@@ -8,7 +8,8 @@ import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Gtk, Adw
+from gi.repository import Gtk, Adw, GLib
+import globals as gl
 
 import threading
 import os
@@ -155,29 +156,17 @@ class OBSActionBase(ActionBase):
         return rows
 
     def on_select_custom_icon(self, default_filename):
-        dialog = Gtk.FileChooserNative.new(
-            title=f"Select Custom Icon for {default_filename}",
-            parent=None,
-            action=Gtk.FileChooserAction.OPEN,
-            accept_label="Select",
-            cancel_label="Cancel"
-        )
-        file_filter = Gtk.FileFilter()
-        file_filter.set_name("Images")
-        file_filter.add_mime_type("image/png")
-        file_filter.add_mime_type("image/jpeg")
-        file_filter.add_mime_type("image/svg+xml")
-        dialog.add_filter(file_filter)
+        current_val = self.get_settings().get(f"custom_icon_{default_filename}", "")
 
-        def on_response(dialog, response_id):
-            if response_id == Gtk.ResponseType.ACCEPT:
-                file = dialog.get_file()
-                path = file.get_path()
-                # Update the text entry
-                if default_filename in self.custom_icon_entries:
-                    self.custom_icon_entries[default_filename].set_text(path)
-                # Save setting
-                settings = self.get_settings()
+        def on_select_callback(path):
+            if not path:
+                return
+            # Update the text entry
+            if default_filename in self.custom_icon_entries:
+                self.custom_icon_entries[default_filename].set_text(path)
+            # Save setting
+            settings = self.get_settings()
+            if settings.get(f"custom_icon_{default_filename}") != path:
                 settings[f"custom_icon_{default_filename}"] = path
                 self.set_settings(settings)
                 self.update_custom_icon_cache()
@@ -190,10 +179,8 @@ class OBSActionBase(ActionBase):
                     self.on_tick()
                 elif hasattr(self, "on_ready"):
                     self.on_ready()
-            dialog.destroy()
 
-        dialog.connect("response", on_response)
-        dialog.show()
+        GLib.idle_add(gl.app.let_user_select_asset, current_val, on_select_callback)
 
     def on_change_custom_icon_path(self, default_filename):
         if default_filename not in self.custom_icon_entries:
