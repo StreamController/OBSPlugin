@@ -77,7 +77,8 @@ CLASS_ICON_MAP = {
         ("scene_item_disabled.png", "Filter Disabled Icon"),
     ],
     "SwitchScene": [
-        ("scene.png", "Switch Scene Icon"),
+        ("scene_active.png", "Active Scene Icon"),
+        ("scene_inactive.png", "Inactive Scene Icon"),
     ],
     "SwitchSceneCollection": [
         ("scene.png", "Switch Scene Collection Icon"),

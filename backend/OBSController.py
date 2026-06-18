@@ -348,6 +348,13 @@ class OBSController(obsws):
         except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
 
+    def get_current_program_scene(self) -> str:
+        try:
+            request = self.call(requests.GetCurrentProgramScene())
+            return request.datain.get("currentProgramSceneName")
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
+            log.error(e)
+
     ## Credit for Studio Mode Preview fix: Rinma (https://github.com/Rinma)
     def switch_to_scene(self, scene:str) -> None:
         studioModeStatus = self.get_studio_mode_enabled()

@@ -5,6 +5,7 @@ from src.backend.PluginManager.PluginBase import PluginBase
 from GtkHelper.GtkHelper import ComboRow
 
 import os
+import threading
 
 # Import gtk modules
 import gi
@@ -15,15 +16,17 @@ from gi.repository import Gtk, Adw
 class SwitchScene(OBSActionBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.current_state = -1
         
     def on_ready(self):
+        self.current_state = -1
         # Connect to obs if not connected
         if self.plugin_base.backend is not None:
             if not self.plugin_base.get_connected():            # self.plugin_base.obs.connect_to(host="localhost", port=4444, timeout=3, legacy=False)
                 self.reconnect_obs()
 
-        media_path = os.path.join(self.plugin_base.PATH, "assets", "scene.png")
-        self.set_media(media_path=media_path, size=0.75)
+        # Show current scene status
+        threading.Thread(target=self.show_current_scene_status, daemon=True, name="show_current_scene_status").start()
 
     def get_config_rows(self) -> list:
         super_rows = super().get_config_rows()
@@ -86,10 +89,48 @@ class SwitchScene(OBSActionBase):
         self.set_settings(settings)
 
     def on_key_down(self):
+        if self.plugin_base.backend is None or not self.plugin_base.backend.get_connected():
+            self.show_error()
+            return
         scene_name = self.get_settings().get("scene")
         if scene_name in [None, ""]:
             return
         self.plugin_base.backend.switch_to_scene(scene_name)
+        self.on_tick()
+
+    def show_current_scene_status(self):
+        if self.plugin_base.backend is None or not self.plugin_base.backend.get_connected():
+            self.hide_error()
+            self.show_for_state(0)
+            return
+        
+        current_scene = self.plugin_base.backend.get_current_program_scene()
+        configured_scene = self.get_settings().get("scene")
+
+        if configured_scene in [None, ""] or current_scene is None:
+            self.hide_error()
+            self.show_for_state(0)
+            return
+
+        self.hide_error()
+        if current_scene == configured_scene:
+            self.show_for_state(1)
+        else:
+            self.show_for_state(0)
+
+    def show_for_state(self, state: int):
+        if state == self.current_state:
+            return
+        
+        self.current_state = state
+        image = "scene_inactive.png"
+        if state == 1:
+            image = "scene_active.png"
+
+        self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", image), size=0.75)
+
+    def on_tick(self):
+        self.show_current_scene_status()
 
     def reconnect_obs(self):
         super().reconnect_obs()

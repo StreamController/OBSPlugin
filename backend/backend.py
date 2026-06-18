@@ -163,6 +163,9 @@ class Backend(BackendBase):
     def switch_to_scene(self, scene:str):
         self.OBSController.switch_to_scene(scene)
 
+    def get_current_program_scene(self) -> str:
+        return self.OBSController.get_current_program_scene()
+
     # Scene Items
     def get_scene_items(self, sceneName: str) -> list[str]:
         return self.OBSController.get_scene_items(sceneName)
