@@ -402,3 +402,9 @@ class OBSController(obsws):
             return source_filter
         except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
+
+    def get_stats(self):
+        try:
+            return self.call(requests.GetStats())
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
+            log.error(e)

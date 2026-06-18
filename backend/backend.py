@@ -45,6 +45,8 @@ class Backend(BackendBase):
             port=self.frontend.get_settings().get("port", 4455),
             password=self.frontend.get_settings().get("password") or ""
         )
+        self._prev_stream_bytes = 0
+        self._prev_stream_time = 0.0
 
     """
     Wrapper methods around OBSController aiming to allow a communication
@@ -283,5 +285,54 @@ class Backend(BackendBase):
 
     def get_source_filter(self, sourceName: str, filterName: str) -> None:
         return self.OBSController.get_source_filter(sourceName, filterName)
+    
+    # Stats
+    def get_stats(self) -> dict:
+        cached = self.cache.get("stats", ttl=0.5)
+        if cached is not None:
+            return cached
+        status = self.OBSController.get_stats()
+        if status is None:
+            return
+        res = {
+            "cpu_usage": status.datain.get("cpuUsage", 0.0),
+            "fps": status.datain.get("activeFps", 0.0),
+            "memory_usage": status.datain.get("memoryUsage", 0.0)
+        }
+        self.cache.set("stats", res)
+        return res
+
+    def get_obs_stats(self) -> dict:
+        stats = self.get_stats()
+        stream_status = self.get_stream_status()
+        
+        bandwidth = 0.0
+        if stream_status and stream_status.get("active"):
+            current_bytes = stream_status.get("bytes", 0)
+            current_time = time.time()
+            
+            prev_bytes = getattr(self, "_prev_stream_bytes", 0)
+            prev_time = getattr(self, "_prev_stream_time", 0.0)
+            
+            if prev_time > 0.0 and current_bytes >= prev_bytes:
+                time_diff = current_time - prev_time
+                if time_diff > 0.05:
+                    # bandwidth in kbps
+                    bandwidth = ((current_bytes - prev_bytes) * 8.0) / (time_diff * 1000.0)
+            
+            self._prev_stream_bytes = current_bytes
+            self._prev_stream_time = current_time
+        else:
+            self._prev_stream_bytes = 0
+            self._prev_stream_time = 0.0
+            
+        res = {
+            "cpu_usage": stats.get("cpu_usage", 0.0) if stats else 0.0,
+            "fps": stats.get("fps", 0.0) if stats else 0.0,
+            "streaming": stream_status.get("active", False) if stream_status else False,
+            "reconnecting": stream_status.get("reconnecting", False) if stream_status else False,
+            "bandwidth": bandwidth # kbps
+        }
+        return res
     
 backend = Backend()

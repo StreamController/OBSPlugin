@@ -43,5 +43,7 @@
 
     "actions.base.ip.label": "IP:",
     "actions.base.port.label": "Port:",
-    "actions.base.password.label": "Password:"
+    "actions.base.password.label": "Password:",
+    "actions.obs-stats.name": "OBS Stats",
+    "actions.obs-stats.stats-count-row.label": "Show Stats Count:"
 }

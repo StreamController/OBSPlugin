@@ -83,6 +83,9 @@ CLASS_ICON_MAP = {
     "SwitchSceneCollection": [
         ("scene.png", "Switch Scene Collection Icon"),
     ],
+    "OBSStats": [
+        ("stats.png", "OBS Stats Icon"),
+    ],
 }
 
 

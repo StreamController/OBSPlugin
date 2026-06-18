@@ -6,5 +6,7 @@
     "actions.base.status.no-connection": "Es konnte keine Verbindung zu OBS hergestellt werden.",
     "actions.base.ip.label": "IP:",
     "actions.base.port.label": "Port:",
-    "actions.base.password.label": "Passwort:"
+    "actions.base.password.label": "Passwort:",
+    "actions.obs-stats.name": "OBS Statistiken",
+    "actions.obs-stats.stats-count-row.label": "Anzahl Statistiken:"
 }
