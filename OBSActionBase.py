@@ -162,6 +162,10 @@ class OBSActionBase(ActionBase):
                 settings[f"custom_icon_{default_filename}"] = path
                 self.set_settings(settings)
                 # Trigger update immediately
+                if hasattr(self, "_current_state"):
+                    self._current_state = None
+                else:
+                    self.current_state = None
                 if hasattr(self, "on_tick"):
                     self.on_tick()
                 elif hasattr(self, "on_ready"):
@@ -181,6 +185,10 @@ class OBSActionBase(ActionBase):
             settings[f"custom_icon_{default_filename}"] = path
             self.set_settings(settings)
             # Trigger update immediately
+            if hasattr(self, "_current_state"):
+                self._current_state = None
+            else:
+                self.current_state = None
             if hasattr(self, "on_tick"):
                 self.on_tick()
             elif hasattr(self, "on_ready"):
