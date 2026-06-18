@@ -92,13 +92,25 @@ class OBSActionBase(ActionBase):
 
         self.has_configuration = True
         self.custom_icon_entries = {}
+        self.validated_custom_icons = {}
 
         self.status_label = Gtk.Label(
             label=self.plugin_base.lm.get("actions.base.status.no-connection"), css_classes=["bold", "red"]
         )
 
+        self.update_custom_icon_cache()
+
         if not self.plugin_base.backend.get_connected():
             self.reconnect_obs()
+
+    def update_custom_icon_cache(self):
+        self.validated_custom_icons = {}
+        settings = self.get_settings()
+        custom_icons = CLASS_ICON_MAP.get(self.__class__.__name__, [])
+        for default_filename, _ in custom_icons:
+            path = settings.get(f"custom_icon_{default_filename}", "").strip()
+            if path and os.path.isfile(path):
+                self.validated_custom_icons[default_filename] = path
 
     def get_config_rows(self) -> list:
         self.ip_entry = Adw.EntryRow(title=self.plugin_base.lm.get("actions.base.ip.label"))
@@ -161,6 +173,7 @@ class OBSActionBase(ActionBase):
                 settings = self.get_settings()
                 settings[f"custom_icon_{default_filename}"] = path
                 self.set_settings(settings)
+                self.update_custom_icon_cache()
                 # Trigger update immediately
                 if hasattr(self, "_current_state"):
                     self._current_state = None
@@ -184,6 +197,7 @@ class OBSActionBase(ActionBase):
         if settings.get(f"custom_icon_{default_filename}") != path:
             settings[f"custom_icon_{default_filename}"] = path
             self.set_settings(settings)
+            self.update_custom_icon_cache()
             # Trigger update immediately
             if hasattr(self, "_current_state"):
                 self._current_state = None
@@ -197,9 +211,8 @@ class OBSActionBase(ActionBase):
     def set_media(self, media_path=None, *args, **kwargs):
         if media_path:
             filename = os.path.basename(media_path)
-            custom_icon = self.get_settings().get(f"custom_icon_{filename}", "")
-            if custom_icon and os.path.isfile(custom_icon):
-                media_path = custom_icon
+            if hasattr(self, "validated_custom_icons") and filename in self.validated_custom_icons:
+                media_path = self.validated_custom_icons[filename]
         super().set_media(media_path=media_path, *args, **kwargs)
 
     def load_config_defaults(self):
