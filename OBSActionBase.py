@@ -93,6 +93,7 @@ class OBSActionBase(ActionBase):
         self.has_configuration = True
         self.custom_icon_entries = {}
         self.validated_custom_icons = {}
+        self.custom_icon_cache_initialized = False
 
         self.status_label = Gtk.Label(
             label=self.plugin_base.lm.get("actions.base.status.no-connection"), css_classes=["bold", "red"]
@@ -111,6 +112,9 @@ class OBSActionBase(ActionBase):
             path = settings.get(f"custom_icon_{default_filename}", "").strip()
             if path and os.path.isfile(path):
                 self.validated_custom_icons[default_filename] = path
+
+        if getattr(self, "on_ready_called", False):
+            self.custom_icon_cache_initialized = True
 
     def get_config_rows(self) -> list:
         self.ip_entry = Adw.EntryRow(title=self.plugin_base.lm.get("actions.base.ip.label"))
@@ -209,6 +213,9 @@ class OBSActionBase(ActionBase):
                 self.on_ready()
 
     def set_media(self, media_path=None, *args, **kwargs):
+        if not getattr(self, "custom_icon_cache_initialized", False) and getattr(self, "on_ready_called", False):
+            self.update_custom_icon_cache()
+
         if media_path:
             filename = os.path.basename(media_path)
             if hasattr(self, "validated_custom_icons") and filename in self.validated_custom_icons:
