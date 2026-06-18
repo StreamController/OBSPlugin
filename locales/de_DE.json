@@ -8,5 +8,11 @@
     "actions.base.port.label": "Port:",
     "actions.base.password.label": "Passwort:",
     "actions.obs-stats.name": "OBS Statistiken",
-    "actions.obs-stats.stats-count-row.label": "Anzahl Statistiken:"
+    "actions.obs-stats.stats-count-row.label": "Anzahl Statistiken:",
+    "actions.obs-stats.cpu": "CPU-Auslastung",
+    "actions.obs-stats.fps": "FPS",
+    "actions.obs-stats.stream": "Streaming-Status",
+    "actions.obs-stats.stat1.label": "Statistik 1 Slot:",
+    "actions.obs-stats.stat2.label": "Statistik 2 Slot:",
+    "actions.obs-stats.stat3.label": "Statistik 3 Slot:"
 }

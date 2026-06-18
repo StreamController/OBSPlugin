@@ -45,5 +45,11 @@
     "actions.base.port.label": "Port:",
     "actions.base.password.label": "Password:",
     "actions.obs-stats.name": "OBS Stats",
-    "actions.obs-stats.stats-count-row.label": "Show Stats Count:"
+    "actions.obs-stats.stats-count-row.label": "Show Stats Count:",
+    "actions.obs-stats.cpu": "CPU Usage",
+    "actions.obs-stats.fps": "FPS",
+    "actions.obs-stats.stream": "Streaming Status",
+    "actions.obs-stats.stat1.label": "Stat 1 Slot:",
+    "actions.obs-stats.stat2.label": "Stat 2 Slot:",
+    "actions.obs-stats.stat3.label": "Stat 3 Slot:"
 }
