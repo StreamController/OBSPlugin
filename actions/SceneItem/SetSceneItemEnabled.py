@@ -1,4 +1,4 @@
-from plugins.com_core447_OBSPlugin.actions.mixins import SetMixin
+from plugins.com_oparada1988_OBS_Plus.actions.mixins import SetMixin
 from .SceneItem import SceneItemBase
 
 

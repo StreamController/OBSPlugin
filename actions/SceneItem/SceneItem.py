@@ -1,9 +1,9 @@
-from plugins.com_core447_OBSPlugin.OBSActionBase import OBSActionBase
+from plugins.com_oparada1988_OBS_Plus.OBSActionBase import OBSActionBase
 from src.backend.DeckManagement.DeckController import DeckController
 from src.backend.PageManagement.Page import Page
 from src.backend.PluginManager.PluginBase import PluginBase
 
-from plugins.com_core447_OBSPlugin.actions.mixins import State, MixinBase
+from plugins.com_oparada1988_OBS_Plus.actions.mixins import State, MixinBase
 
 from abc import ABC
 import os

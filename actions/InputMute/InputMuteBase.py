@@ -1,7 +1,7 @@
 from abc import ABC
 
-from plugins.com_core447_OBSPlugin.OBSActionBase import OBSActionBase
-from plugins.com_core447_OBSPlugin.actions.mixins import MixinBase, State
+from plugins.com_oparada1988_OBS_Plus.OBSActionBase import OBSActionBase
+from plugins.com_oparada1988_OBS_Plus.actions.mixins import MixinBase, State
 
 import os
 import threading

@@ -1,4 +1,4 @@
-from plugins.com_core447_OBSPlugin.OBSActionBase import OBSActionBase
+from plugins.com_oparada1988_OBS_Plus.OBSActionBase import OBSActionBase
 from src.backend.DeckManagement.DeckController import DeckController
 from src.backend.DeckManagement.InputIdentifier import Input, InputEvent
 from src.backend.PageManagement.Page import Page
