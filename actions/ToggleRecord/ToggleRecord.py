@@ -22,19 +22,16 @@ class ToggleRecord(OBSActionBase):
         threading.Thread(target=self.show_current_rec_status, daemon=True, name="show_current_rec_status").start()
 
     def show_current_rec_status(self, new_paused = False):
-        if self.plugin_base.backend is None:
-            self.current_state = -1
-            self.show_error()
-            return
-        if not self.plugin_base.backend.get_connected():
-            self.current_state = -1
-            self.show_error()
+        if self.plugin_base.backend is None or not self.plugin_base.backend.get_connected():
+            self.hide_error()
+            self.show_for_state(0)
             return
         status = self.plugin_base.backend.get_record_status()
         if status is None:
-            self.current_state = -1
-            self.show_error()
+            self.hide_error()
+            self.show_for_state(0)
             return
+        self.hide_error()
         if status["paused"]:
             self.show_for_state(2)
         elif status["active"]:
@@ -68,12 +65,7 @@ class ToggleRecord(OBSActionBase):
         self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", image))
 
     def on_key_down(self):
-        if self.plugin_base.backend is None:
-            self.current_state = -1
-            self.show_error()
-            return
-        if not self.plugin_base.backend.get_connected():
-            self.current_state = -1
+        if self.plugin_base.backend is None or not self.plugin_base.backend.get_connected():
             self.show_error()
             return
         self.plugin_base.backend.toggle_record()
@@ -84,11 +76,9 @@ class ToggleRecord(OBSActionBase):
 
     def show_rec_time(self):
         if not self.plugin_base.backend.get_connected():
-            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
             return
         status = self.plugin_base.backend.get_record_status()
         if status is None:
-            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
             return
         if not status["active"]:
             self.set_bottom_label(None)

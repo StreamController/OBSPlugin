@@ -23,12 +23,15 @@ class RecPlayPause(OBSActionBase):
 
     def show_current_rec_status(self, new_paused = False):
         if not self.plugin_base.get_connected():
-            self.show_error()
+            self.hide_error()
+            self.show_for_state(0)
             return
         status = self.plugin_base.backend.get_record_status()
         if status is None:
-            self.show_error()
+            self.hide_error()
+            self.show_for_state(0)
             return
+        self.hide_error()
         if status["active"] and not status["paused"]:
             self.show_for_state(1)
         elif status["paused"]:

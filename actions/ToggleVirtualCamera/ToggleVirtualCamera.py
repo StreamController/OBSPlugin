@@ -22,22 +22,16 @@ class ToggleVirtualCamera(OBSActionBase):
         threading.Thread(target=self.show_current_virtual_camera_status, daemon=True, name="show_current_virtual_camera_status").start()
 
     def show_current_virtual_camera_status(self, new_paused = False):
-        if self.plugin_base.backend is None:
-            self.current_state = -1
-            self.show_error()
-            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
-            return
-        if not self.plugin_base.backend.get_connected():
-            self.current_state = -1
-            self.show_error()
-            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
+        if self.plugin_base.backend is None or not self.plugin_base.backend.get_connected():
+            self.hide_error()
+            self.show_for_state(0)
             return
         status = self.plugin_base.backend.get_virtual_camera_status()
         if status is None:
-            self.current_state = -1
-            self.show_error()
-            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
+            self.hide_error()
+            self.show_for_state(0)
             return
+        self.hide_error()
         if status["active"]:
             self.show_for_state(1)
         else:
@@ -61,15 +55,8 @@ class ToggleVirtualCamera(OBSActionBase):
         self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", image), size=0.75)
 
     def on_key_down(self):
-        if self.plugin_base.backend is None:
-            self.current_state = -1
+        if self.plugin_base.backend is None or not self.plugin_base.backend.get_connected():
             self.show_error()
-            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
-            return
-        if not self.plugin_base.backend.get_connected():
-            self.current_state = -1
-            self.show_error()
-            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
             return
         if self.current_state == 0:
             self.plugin_base.backend.start_virtual_camera()
