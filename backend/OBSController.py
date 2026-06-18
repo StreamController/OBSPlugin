@@ -408,3 +408,9 @@ class OBSController(obsws):
             return self.call(requests.GetStats())
         except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
+
+    def get_video_settings(self):
+        try:
+            return self.call(requests.GetVideoSettings())
+        except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
+            log.error(e)

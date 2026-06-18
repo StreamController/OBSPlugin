@@ -302,9 +302,31 @@ class Backend(BackendBase):
         self.cache.set("stats", res)
         return res
 
+    def get_video_settings(self) -> dict:
+        cached = self.cache.get("video_settings", ttl=10.0)
+        if cached is not None:
+            return cached
+        status = self.OBSController.get_video_settings()
+        if status is None:
+            return
+        res = {
+            "fps_numerator": status.datain.get("fpsNumerator", 60),
+            "fps_denominator": status.datain.get("fpsDenominator", 1)
+        }
+        self.cache.set("video_settings", res)
+        return res
+
     def get_obs_stats(self) -> dict:
         stats = self.get_stats()
         stream_status = self.get_stream_status()
+        video_settings = self.get_video_settings()
+        
+        target_fps = 60
+        if video_settings:
+            num = video_settings.get("fps_numerator", 60)
+            den = video_settings.get("fps_denominator", 1)
+            if den > 0:
+                target_fps = int(round(num / den))
         
         bandwidth = 0.0
         if stream_status and stream_status.get("active"):
@@ -329,6 +351,7 @@ class Backend(BackendBase):
         res = {
             "cpu_usage": stats.get("cpu_usage", 0.0) if stats else 0.0,
             "fps": stats.get("fps", 0.0) if stats else 0.0,
+            "target_fps": target_fps,
             "streaming": stream_status.get("active", False) if stream_status else False,
             "reconnecting": stream_status.get("reconnecting", False) if stream_status else False,
             "bandwidth": bandwidth # kbps

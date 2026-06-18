@@ -220,7 +220,8 @@ class OBSStats(OBSActionBase):
         stat_strings["CPU"] = f"CPU: {cpu_val:.1f}%"
         
         fps_val = stats.get('fps', 0.0)
-        stat_strings["FPS"] = f"FPS: {int(fps_val)}"
+        target_fps = stats.get('target_fps', 60)
+        stat_strings["FPS"] = f"FPS: {int(round(fps_val))}/{target_fps}"
 
         if stats.get("streaming"):
             bw = stats.get("bandwidth", 0.0)
