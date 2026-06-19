@@ -1,6 +1,6 @@
 # from ...OBSActionbase import OBSActionBase
 import threading
-from plugins.com_core447_OBSPlugin.OBSActionBase import OBSActionBase
+from plugins.com_oparada1988_OBS_Plus.OBSActionBase import OBSActionBase
 from src.backend.DeckManagement.DeckController import DeckController
 from src.backend.PageManagement.Page import Page
 from src.backend.PluginManager.PluginBase import PluginBase
@@ -20,18 +20,14 @@ class ToggleStream(OBSActionBase):
         threading.Thread(target=self.show_current_stream_status, daemon=True, name="show_current_stream_status").start()
     
     def show_current_stream_status(self, new_paused = False):
-        if self.plugin_base.backend is None:
-            self.current_state = -1
-            self.show_error()
-            return
-        if not self.plugin_base.backend.get_connected():
-            self.current_state = -1
-            self.show_error()
+        if self.plugin_base.backend is None or not self.plugin_base.backend.get_connected():
+            self.hide_error()
+            self.show_for_state(0)
             return
         status = self.plugin_base.backend.get_stream_status()
         if status is None:
-            self.current_state = -1
-            self.show_error()
+            self.hide_error()
+            self.show_for_state(0)
             return
         self.hide_error()
         if status["active"]:
@@ -66,12 +62,7 @@ class ToggleStream(OBSActionBase):
         self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", image))
     
     def on_key_down(self):
-        if self.plugin_base.backend is None:
-            self.current_state = -1
-            self.show_error()
-            return
-        if not self.plugin_base.backend.get_connected():
-            self.current_state = -1
+        if self.plugin_base.backend is None or not self.plugin_base.backend.get_connected():
             self.show_error()
             return
         self.plugin_base.backend.toggle_stream()
@@ -82,11 +73,9 @@ class ToggleStream(OBSActionBase):
     
     def show_stream_time(self):
         if not self.plugin_base.backend.get_connected():
-            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
             return
         status = self.plugin_base.backend.get_stream_status()
         if status is None:
-            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
             return
         
         if not status["active"]:

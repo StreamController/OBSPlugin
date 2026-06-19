@@ -1,7 +1,7 @@
 from abc import ABC
 
-from plugins.com_core447_OBSPlugin.OBSActionBase import OBSActionBase
-from plugins.com_core447_OBSPlugin.actions.mixins import MixinBase, State
+from plugins.com_oparada1988_OBS_Plus.OBSActionBase import OBSActionBase
+from plugins.com_oparada1988_OBS_Plus.actions.mixins import MixinBase, State
 
 import os
 import threading
@@ -28,7 +28,7 @@ class InputMuteBase(OBSActionBase, MixinBase, ABC):
         self.current_state = State.UNKNOWN
 
         self.image_path_map = {
-            State.UNKNOWN: os.path.join(self.plugin_base.PATH, "assets", "error.png"),
+            State.UNKNOWN: os.path.join(self.plugin_base.PATH, "assets", "input_muted.png"),
             State.ENABLED: os.path.join(self.plugin_base.PATH, "assets", "input_unmuted.png"),
             State.DISABLED: os.path.join(self.plugin_base.PATH, "assets", "input_muted.png"),
         }
@@ -61,7 +61,7 @@ class InputMuteBase(OBSActionBase, MixinBase, ABC):
     def show_current_input_mute_status(self):
         if not self.plugin_base.get_connected():
             self.current_state = State.UNKNOWN
-            self.show_error()
+            self.hide_error()
             self.set_media()
             return
         if not self.input:
@@ -73,9 +73,10 @@ class InputMuteBase(OBSActionBase, MixinBase, ABC):
         status = self.plugin_base.backend.get_input_muted(self.input)
         if status is None:
             self.current_state = State.UNKNOWN
-            self.show_error()
+            self.hide_error()
             self.set_media()
             return
+        self.hide_error()
         if status["muted"]:
             self.show_for_state(State.DISABLED)
         else:
@@ -164,12 +165,10 @@ class InputMuteBase(OBSActionBase, MixinBase, ABC):
         try:
             self.assert_valid_state_for_update()
         except NotConnectedError:
-            self.current_state = State.UNKNOWN
             self.show_error()
-            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
             return
         except InputNotFoundError:
-            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
+            self.show_error()
             return
 
         next_state = self.next_state()

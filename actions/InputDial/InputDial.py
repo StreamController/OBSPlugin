@@ -1,4 +1,4 @@
-from plugins.com_core447_OBSPlugin.OBSActionBase import OBSActionBase
+from plugins.com_oparada1988_OBS_Plus.OBSActionBase import OBSActionBase
 from src.backend.DeckManagement.DeckController import DeckController
 from src.backend.DeckManagement.InputIdentifier import Input, InputEvent
 from src.backend.PageManagement.Page import Page
@@ -35,37 +35,49 @@ class InputDial(OBSActionBase):
         threading.Thread(target=self.show_current_input_volume, daemon=True, name="show_current_input_volume").start()
     
     def show_current_input_volume(self):
-        if self.plugin_base.backend is None:
-            self.current_state = None
-            self.show_error()
-            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
-            return
-        if not self.plugin_base.backend.get_connected():
-            self.current_state = None
-            self.show_error()
-            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
+        if self.plugin_base.backend is None or not self.plugin_base.backend.get_connected():
+            self.hide_error()
+            image = "input_muted.png"
+            if self.last_muted != True:
+                self.last_muted = True
+                self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", image), size=0.9)
+            if self.last_volume != "":
+                self.last_volume = ""
+                self.set_label("")
             return
         if not self.get_settings().get("input"):
-            self.current_state = None
             self.show_error()
-            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
+            image = "input_muted.png"
+            if self.last_muted != True:
+                self.last_muted = True
+                self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", image), size=0.9)
             return
         
         # update muted
         status = self.plugin_base.backend.get_input_muted(self.get_settings().get("input"))
         if status is None:
-            self.current_state = -1
-            self.show_error()
-            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
+            self.hide_error()
+            image = "input_muted.png"
+            if self.last_muted != True:
+                self.last_muted = True
+                self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", image), size=0.9)
+            if self.last_volume != "":
+                self.last_volume = ""
+                self.set_label("")
             return
         self.muted = status["muted"]
 
         # update volume
         status = self.plugin_base.backend.get_input_volume(self.get_settings().get("input"))
         if status is None:
-            self.current_state = -1
-            self.show_error()
-            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
+            self.hide_error()
+            image = "input_muted.png"
+            if self.last_muted != True:
+                self.last_muted = True
+                self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", image), size=0.9)
+            if self.last_volume != "":
+                self.last_volume = ""
+                self.set_label("")
             return
         self.volume = self.db_to_volume(status["volume"])
 
@@ -150,20 +162,13 @@ class InputDial(OBSActionBase):
             self.volume_change(-5)
 
     def mute_toggle(self):
-        if self.plugin_base.backend is None:
-            self.current_state = None
+        if self.plugin_base.backend is None or not self.plugin_base.backend.get_connected():
             self.show_error()
-            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
-            return
-        if not self.plugin_base.backend.get_connected():
-            self.current_state = None
-            self.show_error()
-            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
             return
 
         input_name = self.get_settings().get("input")
         if input_name in [None, ""]:
-            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
+            self.show_error()
             return
 
         self.muted = not self.muted
@@ -171,20 +176,13 @@ class InputDial(OBSActionBase):
         self.on_tick()
     
     def volume_change(self, diff):
-        if self.plugin_base.backend is None:
-            self.current_state = None
+        if self.plugin_base.backend is None or not self.plugin_base.backend.get_connected():
             self.show_error()
-            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
-            return
-        if not self.plugin_base.backend.get_connected():
-            self.current_state = None
-            self.show_error()
-            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
             return
 
         input_name = self.get_settings().get("input")
         if input_name in [None, ""]:
-            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
+            self.show_error()
             return
         
         self.volume += diff

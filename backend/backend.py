@@ -13,16 +13,40 @@ from OBSController import OBSController
 from obswebsocket import events
 import os
 import threading
+import time
+
+class BackendCache:
+    def __init__(self):
+        self.data = {}
+        
+    def get(self, key, ttl=0.1):
+        if key in self.data:
+            val, timestamp = self.data[key]
+            if time.time() - timestamp < ttl:
+                return val
+        return None
+        
+    def set(self, key, val):
+        self.data[key] = (val, time.time())
+        
+    def clear(self, key=None):
+        if key:
+            self.data.pop(key, None)
+        else:
+            self.data.clear()
 
 class Backend(BackendBase):
     def __init__(self):
         super().__init__()
+        self.cache = BackendCache()
         self.OBSController = OBSController()
         self.OBSController.connect_to(
             host=self.frontend.get_settings().get("ip", "localhost"),
             port=self.frontend.get_settings().get("port", 4455),
             password=self.frontend.get_settings().get("password") or ""
         )
+        self._prev_stream_bytes = 0
+        self._prev_stream_time = 0.0
 
     """
     Wrapper methods around OBSController aiming to allow a communication
@@ -43,10 +67,13 @@ class Backend(BackendBase):
 
     # Streaming
     def get_stream_status(self) -> dict:
+        cached = self.cache.get("stream_status", ttl=0.1)
+        if cached is not None:
+            return cached
         status = self.OBSController.get_stream_status()
         if status is None:
             return
-        return {
+        res = {
             "active": status.datain["outputActive"],
             "reconnecting": status.datain["outputReconnecting"],
             "timecode": status.datain["outputTimecode"],
@@ -56,8 +83,11 @@ class Backend(BackendBase):
             "skipped_frames": status.datain["outputSkippedFrames"],
             "total_frames": status.datain["outputTotalFrames"]
         }
+        self.cache.set("stream_status", res)
+        return res
 
     def toggle_stream(self):
+        self.cache.clear("stream_status")
         status = self.OBSController.toggle_stream()
         if status is None:
             return False
@@ -65,36 +95,50 @@ class Backend(BackendBase):
     
     # Recording
     def get_record_status(self) -> dict:
+        cached = self.cache.get("record_status", ttl=0.1)
+        if cached is not None:
+            return cached
         status = self.OBSController.get_record_status()
         if status is None:
             return
-        return {
+        res = {
             "active": status.datain["outputActive"],
             "paused": status.datain["outputPaused"],
             "timecode": status.datain["outputTimecode"],
             "duration": status.datain["outputDuration"],
             "bytes": status.datain["outputBytes"]
         }
+        self.cache.set("record_status", res)
+        return res
 
     def toggle_record(self):
+        self.cache.clear("record_status")
         self.OBSController.toggle_record()
 
     def toggle_record_pause(self):
+        self.cache.clear("record_status")
         self.OBSController.toggle_record_pause()
 
     # Replay Buffer
     def get_replay_buffer_status(self) -> dict:
+        cached = self.cache.get("replay_buffer_status", ttl=0.1)
+        if cached is not None:
+            return cached
         status = self.OBSController.get_replay_buffer_status()
         if status is None:
             return
-        return {
+        res = {
             "active": status.datain["outputActive"]
         }
+        self.cache.set("replay_buffer_status", res)
+        return res
 
     def start_replay_buffer(self):
+        self.cache.clear("replay_buffer_status")
         self.OBSController.start_replay_buffer()
 
     def stop_replay_buffer(self):
+        self.cache.clear("replay_buffer_status")
         self.OBSController.stop_replay_buffer()
 
     def save_replay_buffer(self):
@@ -102,29 +146,42 @@ class Backend(BackendBase):
 
     # Virtual Camera
     def get_virtual_camera_status(self) -> dict:
+        cached = self.cache.get("virtual_camera_status", ttl=0.1)
+        if cached is not None:
+            return cached
         status = self.OBSController.get_virtual_camera_status()
         if status is None:
             return
-        return {
+        res = {
             "active": status.datain["outputActive"]
         }
+        self.cache.set("virtual_camera_status", res)
+        return res
 
     def start_virtual_camera(self):
+        self.cache.clear("virtual_camera_status")
         self.OBSController.start_virtual_camera()
 
     def stop_virtual_camera(self):
+        self.cache.clear("virtual_camera_status")
         self.OBSController.stop_virtual_camera()
 
     # Studio Mode
     def get_studio_mode_enabled(self) -> dict:
+        cached = self.cache.get("studio_mode_enabled", ttl=0.1)
+        if cached is not None:
+            return cached
         status = self.OBSController.get_studio_mode_enabled()
         if status is None:
             return
-        return {
+        res = {
             "active": status.datain["studioModeEnabled"]
         }
+        self.cache.set("studio_mode_enabled", res)
+        return res
 
     def set_studio_mode_enabled(self, enabled: bool):
+        self.cache.clear("studio_mode_enabled")
         self.OBSController.set_studio_mode_enabled(enabled)
 
     def trigger_transition(self):
@@ -132,17 +189,30 @@ class Backend(BackendBase):
 
     # Input Mixing
     def get_inputs(self) -> list[str]:
-        return self.OBSController.get_inputs()
+        cached = self.cache.get("inputs", ttl=2.0)
+        if cached is not None:
+            return cached
+        res = self.OBSController.get_inputs()
+        self.cache.set("inputs", res)
+        return res
 
     def get_input_muted(self, input: str):
+        key = f"input_muted_{input}"
+        cached = self.cache.get(key, ttl=0.1)
+        if cached is not None:
+            return cached
         status = self.OBSController.get_input_muted(input)
         if status is None:
             return
-        return {
+        res = {
             "muted": status.datain["inputMuted"]
         }
+        self.cache.set(key, res)
+        return res
 
     def set_input_muted(self, input: str, muted: bool):
+        key = f"input_muted_{input}"
+        self.cache.clear(key)
         self.OBSController.set_input_muted(input, muted)
 
     def get_input_volume(self, input: str):
@@ -158,24 +228,46 @@ class Backend(BackendBase):
 
     # Scenes
     def get_scene_names(self) -> list[str]:
-        return self.OBSController.get_scenes()
+        cached = self.cache.get("scene_names", ttl=2.0)
+        if cached is not None:
+            return cached
+        res = self.OBSController.get_scenes()
+        self.cache.set("scene_names", res)
+        return res
     
     def switch_to_scene(self, scene:str):
+        self.cache.clear("current_program_scene")
         self.OBSController.switch_to_scene(scene)
+
+    def get_current_program_scene(self) -> str:
+        cached = self.cache.get("current_program_scene", ttl=0.1)
+        if cached is not None:
+            return cached
+        res = self.OBSController.get_current_program_scene()
+        self.cache.set("current_program_scene", res)
+        return res
 
     # Scene Items
     def get_scene_items(self, sceneName: str) -> list[str]:
         return self.OBSController.get_scene_items(sceneName)
 
     def get_scene_item_enabled(self, sceneName: str, sourceName: str):
+        key = f"scene_item_enabled_{sceneName}_{sourceName}"
+        cached = self.cache.get(key, ttl=0.1)
+        if cached is not None:
+            return cached
         status = self.OBSController.get_scene_item_enabled(sceneName, sourceName)
         if status is None:
             return
-        return {
+        res = {
             "enabled": status.datain["sceneItemEnabled"]
         }
+        self.cache.set(key, res)
+        return res
 
     def set_scene_item_enabled(self, sceneName: str, sourceName: str, enabled: bool):
+        key = f"scene_item_enabled_{sceneName}_{sourceName}"
+        self.cache.clear(key)
         self.OBSController.set_scene_item_enabled(sceneName, sourceName, enabled)
 
     # Scene Collections
@@ -193,5 +285,77 @@ class Backend(BackendBase):
 
     def get_source_filter(self, sourceName: str, filterName: str) -> None:
         return self.OBSController.get_source_filter(sourceName, filterName)
+    
+    # Stats
+    def get_stats(self) -> dict:
+        cached = self.cache.get("stats", ttl=0.5)
+        if cached is not None:
+            return cached
+        status = self.OBSController.get_stats()
+        if status is None:
+            return
+        res = {
+            "cpu_usage": status.datain.get("cpuUsage", 0.0),
+            "fps": status.datain.get("activeFps", 0.0),
+            "memory_usage": status.datain.get("memoryUsage", 0.0)
+        }
+        self.cache.set("stats", res)
+        return res
+
+    def get_video_settings(self) -> dict:
+        cached = self.cache.get("video_settings", ttl=10.0)
+        if cached is not None:
+            return cached
+        status = self.OBSController.get_video_settings()
+        if status is None:
+            return
+        res = {
+            "fps_numerator": status.datain.get("fpsNumerator", 60),
+            "fps_denominator": status.datain.get("fpsDenominator", 1)
+        }
+        self.cache.set("video_settings", res)
+        return res
+
+    def get_obs_stats(self) -> dict:
+        stats = self.get_stats()
+        stream_status = self.get_stream_status()
+        video_settings = self.get_video_settings()
+        
+        target_fps = 60
+        if video_settings:
+            num = video_settings.get("fps_numerator", 60)
+            den = video_settings.get("fps_denominator", 1)
+            if den > 0:
+                target_fps = int(round(num / den))
+        
+        bandwidth = 0.0
+        if stream_status and stream_status.get("active"):
+            current_bytes = stream_status.get("bytes", 0)
+            current_time = time.time()
+            
+            prev_bytes = getattr(self, "_prev_stream_bytes", 0)
+            prev_time = getattr(self, "_prev_stream_time", 0.0)
+            
+            if prev_time > 0.0 and current_bytes >= prev_bytes:
+                time_diff = current_time - prev_time
+                if time_diff > 0.05:
+                    # bandwidth in kbps
+                    bandwidth = ((current_bytes - prev_bytes) * 8.0) / (time_diff * 1000.0)
+            
+            self._prev_stream_bytes = current_bytes
+            self._prev_stream_time = current_time
+        else:
+            self._prev_stream_bytes = 0
+            self._prev_stream_time = 0.0
+            
+        res = {
+            "cpu_usage": stats.get("cpu_usage", 0.0) if stats else 0.0,
+            "fps": stats.get("fps", 0.0) if stats else 0.0,
+            "target_fps": target_fps,
+            "streaming": stream_status.get("active", False) if stream_status else False,
+            "reconnecting": stream_status.get("reconnecting", False) if stream_status else False,
+            "bandwidth": bandwidth # kbps
+        }
+        return res
     
 backend = Backend()

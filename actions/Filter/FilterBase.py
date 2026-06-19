@@ -1,5 +1,5 @@
-from plugins.com_core447_OBSPlugin.OBSActionBase import OBSActionBase
-from plugins.com_core447_OBSPlugin.actions.mixins import State, MixinBase
+from plugins.com_oparada1988_OBS_Plus.OBSActionBase import OBSActionBase
+from plugins.com_oparada1988_OBS_Plus.actions.mixins import State, MixinBase
 from src.backend.DeckManagement.DeckController import DeckController
 from src.backend.PageManagement.Page import Page
 from src.backend.PluginManager.PluginBase import PluginBase
@@ -33,7 +33,8 @@ class FilterBase(OBSActionBase, MixinBase, ABC):
     def show_current_filter_status(self):
         if not self.plugin_base.get_connected():
             self.current_state = State.UNKNOWN
-            self.show_error()
+            self.hide_error()
+            self.show_for_state(State.UNKNOWN)
             return
         if not self.get_settings().get("filter"):
             self.current_state = State.UNKNOWN
@@ -43,8 +44,10 @@ class FilterBase(OBSActionBase, MixinBase, ABC):
         status = self.plugin_base.backend.get_source_filter(self.get_settings().get("scene"), self.get_settings().get("filter"))
         if status is None:
             self.current_state = State.UNKNOWN
-            self.show_error()
+            self.hide_error()
+            self.show_for_state(State.UNKNOWN)
             return
+        self.hide_error()
         if status["filterEnabled"]:
             self.show_for_state(State.ENABLED)
         else:
@@ -52,13 +55,15 @@ class FilterBase(OBSActionBase, MixinBase, ABC):
 
     def show_for_state(self, state: State):
         if state == self.current_state:
-            return
+            # We still want to update media if the state is State.UNKNOWN when we initialize/disconnect
+            pass
+        else:
+            self.current_state = state
 
-        self.current_state = state
         image = "scene_item_disabled.png"
 
         if state == State.UNKNOWN:
-            self.show_error()
+            self.hide_error()
         else:
             self.hide_error()
 
@@ -176,9 +181,7 @@ class FilterBase(OBSActionBase, MixinBase, ABC):
 
     def on_key_down(self):
         if not self.plugin_base.get_connected():
-            self.current_state = State.UNKNOWN
             self.show_error()
-            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
             return
 
         scene_name = self.get_settings().get("scene")

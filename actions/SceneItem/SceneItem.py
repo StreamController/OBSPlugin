@@ -1,9 +1,9 @@
-from plugins.com_core447_OBSPlugin.OBSActionBase import OBSActionBase
+from plugins.com_oparada1988_OBS_Plus.OBSActionBase import OBSActionBase
 from src.backend.DeckManagement.DeckController import DeckController
 from src.backend.PageManagement.Page import Page
 from src.backend.PluginManager.PluginBase import PluginBase
 
-from plugins.com_core447_OBSPlugin.actions.mixins import State, MixinBase
+from plugins.com_oparada1988_OBS_Plus.actions.mixins import State, MixinBase
 
 from abc import ABC
 import os
@@ -22,7 +22,7 @@ class SceneItemBase(OBSActionBase, MixinBase, ABC):
         self.current_state = State.UNKNOWN
 
         self.image_path_map = {
-            State.UNKNOWN: os.path.join(self.plugin_base.PATH, "assets", "error.png"),
+            State.UNKNOWN: os.path.join(self.plugin_base.PATH, "assets", "scene_item_disabled.png"),
             State.ENABLED: os.path.join(self.plugin_base.PATH, "assets", "scene_item_enabled.png"),
             State.DISABLED: os.path.join(self.plugin_base.PATH, "assets", "scene_item_disabled.png")
         }
@@ -44,7 +44,7 @@ class SceneItemBase(OBSActionBase, MixinBase, ABC):
     def show_current_scene_item_status(self):
         if not self.plugin_base.get_connected():
             self.current_state = State.UNKNOWN
-            self.show_error()
+            self.hide_error()
             self.set_media()
             return
         if not self.get_settings().get("item"):
@@ -56,9 +56,10 @@ class SceneItemBase(OBSActionBase, MixinBase, ABC):
         status = self.plugin_base.backend.get_scene_item_enabled(self.get_settings().get("scene"), self.get_settings().get("item"))
         if status is None:
             self.current_state = State.UNKNOWN
-            self.show_error()
+            self.hide_error()
             self.set_media()
             return
+        self.hide_error()
         if status["enabled"]:
             self.show_for_state(State.ENABLED)
         else:
@@ -179,9 +180,7 @@ class SceneItemBase(OBSActionBase, MixinBase, ABC):
 
     def on_key_down(self):
         if not self.plugin_base.get_connected():
-            self.current_state = -1
             self.show_error()
-            self.set_media()
             return
 
         scene_name = self.get_settings().get("scene")

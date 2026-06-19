@@ -38,6 +38,7 @@ from actions.SwitchScene.SwitchScene import SwitchScene
 from actions.SceneItem import SetSceneItemEnabled, ToggleSceneItemEnabled
 from actions.Filter import SetFilter, ToggleFilter
 from actions.SwitchSceneCollection.SwitchSceneCollection import SwitchSceneCollection
+from actions.OBSStats.OBSStats import OBSStats
 
 
 class OBS(PluginBase):
@@ -292,6 +293,20 @@ class OBS(PluginBase):
             },
         )
         self.add_action_holder(set_filter_holder)
+
+        # OBS Stats
+        obs_stats_holder = ActionHolder(
+            plugin_base=self,
+            action_base=OBSStats,
+            action_id_suffix="OBSStats",
+            action_name=self.lm.get("actions.obs-stats.name"),
+            action_support={
+                Input.Key: ActionInputSupport.SUPPORTED,
+                Input.Dial: ActionInputSupport.SUPPORTED,
+                Input.Touchscreen: ActionInputSupport.SUPPORTED,
+            },
+        )
+        self.add_action_holder(obs_stats_holder)
 
         # Load custom css
         self.add_css_stylesheet(os.path.join(self.PATH, "style.css"))

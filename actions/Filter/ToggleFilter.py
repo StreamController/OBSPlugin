@@ -1,4 +1,4 @@
-from plugins.com_core447_OBSPlugin.actions.mixins import ToggleMixin
+from plugins.com_oparada1988_OBS_Plus.actions.mixins import ToggleMixin
 from .FilterBase import FilterBase
 
 

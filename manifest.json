@@ -1,7 +1,8 @@
 {
     "version": "1.0.1",
+    "author": "oparada1988",
     "thumbnail": "store/Thumbnail.png",
-    "id": "com_core447_OBSPlugin",
+    "id": "com_oparada1988_OBS_Plus",
     "name": "OBS",
     "descriptions": {
         "en_US": "Control OBS."
