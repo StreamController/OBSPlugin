@@ -1,4 +1,4 @@
-<img width="1000" height="360" alt="obsplus" src="https://github.com/user-attachments/assets/dbeed0ab-2df8-4efe-b8c9-fc6e05533f3e" />
+<img width="1000" height="360" alt="obsplus" src="store/Thumbnail.png" />
 
 Enhanced OBS Plugin for StreamController, based on the official OBS Plugin by Core447 https://github.com/StreamController/OBSPlugin
 
