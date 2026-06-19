@@ -1,6 +1,6 @@
 <img width="1000" height="360" alt="obsplus" src="store/Thumbnail.png" />
 
-Enhanced OBS Plugin for StreamController, based on the official OBS Plugin by Core447 https://github.com/StreamController/OBSPlugin
+Official OBS Plugin for StreamController
 
 Current features:
  - Custom action icons
