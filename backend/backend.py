@@ -10,6 +10,7 @@ logging.getLogger = lambda *args, **kwargs: LOG
 from streamcontroller_plugin_tools import BackendBase
 
 from OBSController import OBSController
+import obswebsocket
 from obswebsocket import events
 import os
 import threading
@@ -39,40 +40,164 @@ class Backend(BackendBase):
     def __init__(self):
         super().__init__()
         self.cache = BackendCache()
-        self.OBSController = OBSController()
-        self.OBSController.connect_to(
-            host=self.frontend.get_settings().get("ip", "localhost"),
-            port=self.frontend.get_settings().get("port", 4455),
-            password=self.frontend.get_settings().get("password") or ""
-        )
-        self._prev_stream_bytes = 0
-        self._prev_stream_time = 0.0
+        self.controllers = {}  # connection_id -> {"controller": OBSController, "config": config_dict}
+        self._prev_stream_bytes = {}
+        self._prev_stream_time = {}
+        
+        # Initialize connections in background thread to avoid block
+        threading.Thread(target=self.reload_connections, daemon=True, name="initial_connections_reload").start()
+
+    def get_controller(self, connection_id="default") -> OBSController:
+        if connection_id not in self.controllers:
+            if not self.controllers:
+                return None
+            if "default" in self.controllers:
+                return self.controllers["default"]["controller"]
+            return list(self.controllers.values())[0]["controller"]
+        return self.controllers[connection_id]["controller"]
+
+    def reload_connections(self):
+        try:
+            settings = self.frontend.get_settings()
+        except Exception as e:
+            LOG.error(f"Could not retrieve settings from frontend: {e}")
+            settings = {}
+
+        connections = settings.get("connections", [])
+        
+        if not connections:
+            ip = settings.get("ip", "localhost")
+            port = settings.get("port", 4455)
+            password = settings.get("password") or ""
+            connections = [{
+                "id": "default",
+                "name": "Default",
+                "ip": ip,
+                "port": port,
+                "password": password
+            }]
+            
+        current_ids = set(c["id"] for c in connections)
+        
+        # Disconnect and delete removed connections
+        for cid in list(self.controllers.keys()):
+            if cid not in current_ids:
+                LOG.info(f"Removing OBS connection profile: {cid}")
+                try:
+                    self.controllers[cid]["controller"].disconnect()
+                    if self.controllers[cid]["controller"].event_obs is not None:
+                        if self.controllers[cid]["controller"].event_obs.ws is not None:
+                            self.controllers[cid]["controller"].event_obs.disconnect()
+                except Exception as e:
+                    LOG.error(e)
+                del self.controllers[cid]
+                
+        # Connect or update existing connections
+        for conn in connections:
+            cid = conn["id"]
+            ip = conn.get("ip", "localhost")
+            try:
+                port = int(conn.get("port", 4455))
+            except ValueError:
+                port = 4455
+            password = conn.get("password", "")
+            
+            existing = self.controllers.get(cid)
+            if existing:
+                cfg = existing["config"]
+                if cfg.get("ip") == ip and cfg.get("port") == port and cfg.get("password") == password:
+                    if existing["controller"].connected:
+                        continue
+                        
+            if existing:
+                LOG.info(f"Config changed for profile {cid}, reconnecting...")
+                try:
+                    existing["controller"].disconnect()
+                    if existing["controller"].event_obs is not None:
+                        if existing["controller"].event_obs.ws is not None:
+                            existing["controller"].event_obs.disconnect()
+                except Exception as e:
+                    LOG.error(e)
+            else:
+                LOG.info(f"Creating new controller for profile: {cid}")
+                
+            controller = OBSController()
+            self.controllers[cid] = {
+                "controller": controller,
+                "config": {
+                    "ip": ip,
+                    "port": port,
+                    "password": password
+                }
+            }
+            threading.Thread(target=self._connect_profile, args=(cid, ip, port, password), daemon=True).start()
+
+    def _connect_profile(self, cid, ip, port, password):
+        try:
+            if cid in self.controllers:
+                controller = self.controllers[cid]["controller"]
+                controller.connect_to(
+                    host=ip,
+                    port=port,
+                    password=password,
+                    timeout=3
+                )
+        except Exception as e:
+            LOG.error(f"Error connecting profile {cid}: {e}")
+
+    def test_connection(self, host, port, password) -> dict:
+        try:
+            test_ctrl = OBSController()
+            success = test_ctrl.connect_to(host=host, port=port, password=password, timeout=3)
+            if success and test_ctrl.connected:
+                version_info = "Connected"
+                try:
+                    version_info = test_ctrl.call(obswebsocket.requests.GetVersion()).getObsVersion()
+                except Exception:
+                    pass
+                test_ctrl.disconnect()
+                if test_ctrl.event_obs is not None:
+                    if test_ctrl.event_obs.ws is not None:
+                        test_ctrl.event_obs.disconnect()
+                return {"success": True, "version": version_info}
+            else:
+                return {"success": False, "error": "Could not connect"}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
 
     """
     Wrapper methods around OBSController aiming to allow a communication
     between the frontend and the backend in default python data types
     """
 
-    def get_connected(self) -> bool:
-        return self.OBSController.connected
+    def get_connected(self, connection_id="default") -> bool:
+        controller = self.get_controller(connection_id)
+        return controller.connected if controller else False
 
-    def connect_to(self, *args, **kwargs):
-        self.OBSController.connect_to(*args, **kwargs)
+    def connect_to(self, host=None, port=None, password=None, timeout=3, legacy=False, connection_id="default"):
+        # Signature kept for backward compatibility; reload_connections should be preferred.
+        controller = self.get_controller(connection_id)
+        if controller:
+            controller.connect_to(host=host, port=port, password=password, timeout=timeout, legacy=legacy)
 
-    def get_controller(self) -> OBSController:
-        """
-        Calling methods on the returned controller will raise a circular reference error from Pyro
-        """
-        return self.OBSController
+    def get_controller_object(self, connection_id="default") -> OBSController:
+        return self.get_controller(connection_id)
 
     # Streaming
-    def get_stream_status(self) -> dict:
-        cached = self.cache.get("stream_status", ttl=0.1)
+    def get_stream_status(self, connection_id="default") -> dict:
+        cache_key = f"stream_status_{connection_id}"
+        cached = self.cache.get(cache_key, ttl=0.1)
         if cached is not None:
             return cached
-        status = self.OBSController.get_stream_status()
+            
+        controller = self.get_controller(connection_id)
+        if not controller or not controller.connected:
+            return None
+            
+        status = controller.get_stream_status()
         if status is None:
-            return
+            return None
+            
         res = {
             "active": status.datain["outputActive"],
             "reconnecting": status.datain["outputReconnecting"],
@@ -83,24 +208,37 @@ class Backend(BackendBase):
             "skipped_frames": status.datain["outputSkippedFrames"],
             "total_frames": status.datain["outputTotalFrames"]
         }
-        self.cache.set("stream_status", res)
+        self.cache.set(cache_key, res)
         return res
 
-    def toggle_stream(self):
-        self.cache.clear("stream_status")
-        status = self.OBSController.toggle_stream()
+    def toggle_stream(self, connection_id="default"):
+        cache_key = f"stream_status_{connection_id}"
+        self.cache.clear(cache_key)
+        
+        controller = self.get_controller(connection_id)
+        if not controller or not controller.connected:
+            return False
+            
+        status = controller.toggle_stream()
         if status is None:
             return False
         return status.datain["outputActive"]
     
     # Recording
-    def get_record_status(self) -> dict:
-        cached = self.cache.get("record_status", ttl=0.1)
+    def get_record_status(self, connection_id="default") -> dict:
+        cache_key = f"record_status_{connection_id}"
+        cached = self.cache.get(cache_key, ttl=0.1)
         if cached is not None:
             return cached
-        status = self.OBSController.get_record_status()
+            
+        controller = self.get_controller(connection_id)
+        if not controller or not controller.connected:
+            return None
+            
+        status = controller.get_record_status()
         if status is None:
-            return
+            return None
+            
         res = {
             "active": status.datain["outputActive"],
             "paused": status.datain["outputPaused"],
@@ -108,218 +246,337 @@ class Backend(BackendBase):
             "duration": status.datain["outputDuration"],
             "bytes": status.datain["outputBytes"]
         }
-        self.cache.set("record_status", res)
+        self.cache.set(cache_key, res)
         return res
 
-    def toggle_record(self):
-        self.cache.clear("record_status")
-        self.OBSController.toggle_record()
+    def toggle_record(self, connection_id="default"):
+        cache_key = f"record_status_{connection_id}"
+        self.cache.clear(cache_key)
+        controller = self.get_controller(connection_id)
+        if controller and controller.connected:
+            controller.toggle_record()
 
-    def toggle_record_pause(self):
-        self.cache.clear("record_status")
-        self.OBSController.toggle_record_pause()
+    def toggle_record_pause(self, connection_id="default"):
+        cache_key = f"record_status_{connection_id}"
+        self.cache.clear(cache_key)
+        controller = self.get_controller(connection_id)
+        if controller and controller.connected:
+            controller.toggle_record_pause()
 
     # Replay Buffer
-    def get_replay_buffer_status(self) -> dict:
-        cached = self.cache.get("replay_buffer_status", ttl=0.1)
+    def get_replay_buffer_status(self, connection_id="default") -> dict:
+        cache_key = f"replay_buffer_status_{connection_id}"
+        cached = self.cache.get(cache_key, ttl=0.1)
         if cached is not None:
             return cached
-        status = self.OBSController.get_replay_buffer_status()
+            
+        controller = self.get_controller(connection_id)
+        if not controller or not controller.connected:
+            return None
+            
+        status = controller.get_replay_buffer_status()
         if status is None:
-            return
+            return None
+            
         res = {
             "active": status.datain["outputActive"]
         }
-        self.cache.set("replay_buffer_status", res)
+        self.cache.set(cache_key, res)
         return res
 
-    def start_replay_buffer(self):
-        self.cache.clear("replay_buffer_status")
-        self.OBSController.start_replay_buffer()
+    def start_replay_buffer(self, connection_id="default"):
+        cache_key = f"replay_buffer_status_{connection_id}"
+        self.cache.clear(cache_key)
+        controller = self.get_controller(connection_id)
+        if controller and controller.connected:
+            controller.start_replay_buffer()
 
-    def stop_replay_buffer(self):
-        self.cache.clear("replay_buffer_status")
-        self.OBSController.stop_replay_buffer()
+    def stop_replay_buffer(self, connection_id="default"):
+        cache_key = f"replay_buffer_status_{connection_id}"
+        self.cache.clear(cache_key)
+        controller = self.get_controller(connection_id)
+        if controller and controller.connected:
+            controller.stop_replay_buffer()
 
-    def save_replay_buffer(self):
-        self.OBSController.save_replay_buffer()
+    def save_replay_buffer(self, connection_id="default"):
+        controller = self.get_controller(connection_id)
+        if controller and controller.connected:
+            controller.save_replay_buffer()
 
     # Virtual Camera
-    def get_virtual_camera_status(self) -> dict:
-        cached = self.cache.get("virtual_camera_status", ttl=0.1)
+    def get_virtual_camera_status(self, connection_id="default") -> dict:
+        cache_key = f"virtual_camera_status_{connection_id}"
+        cached = self.cache.get(cache_key, ttl=0.1)
         if cached is not None:
             return cached
-        status = self.OBSController.get_virtual_camera_status()
+            
+        controller = self.get_controller(connection_id)
+        if not controller or not controller.connected:
+            return None
+            
+        status = controller.get_virtual_camera_status()
         if status is None:
-            return
+            return None
+            
         res = {
             "active": status.datain["outputActive"]
         }
-        self.cache.set("virtual_camera_status", res)
+        self.cache.set(cache_key, res)
         return res
 
-    def start_virtual_camera(self):
-        self.cache.clear("virtual_camera_status")
-        self.OBSController.start_virtual_camera()
+    def start_virtual_camera(self, connection_id="default"):
+        cache_key = f"virtual_camera_status_{connection_id}"
+        self.cache.clear(cache_key)
+        controller = self.get_controller(connection_id)
+        if controller and controller.connected:
+            controller.start_virtual_camera()
 
-    def stop_virtual_camera(self):
-        self.cache.clear("virtual_camera_status")
-        self.OBSController.stop_virtual_camera()
+    def stop_virtual_camera(self, connection_id="default"):
+        cache_key = f"virtual_camera_status_{connection_id}"
+        self.cache.clear(cache_key)
+        controller = self.get_controller(connection_id)
+        if controller and controller.connected:
+            controller.stop_virtual_camera()
 
     # Studio Mode
-    def get_studio_mode_enabled(self) -> dict:
-        cached = self.cache.get("studio_mode_enabled", ttl=0.1)
+    def get_studio_mode_enabled(self, connection_id="default") -> dict:
+        cache_key = f"studio_mode_enabled_{connection_id}"
+        cached = self.cache.get(cache_key, ttl=0.1)
         if cached is not None:
             return cached
-        status = self.OBSController.get_studio_mode_enabled()
+            
+        controller = self.get_controller(connection_id)
+        if not controller or not controller.connected:
+            return None
+            
+        status = controller.get_studio_mode_enabled()
         if status is None:
-            return
+            return None
+            
         res = {
             "active": status.datain["studioModeEnabled"]
         }
-        self.cache.set("studio_mode_enabled", res)
+        self.cache.set(cache_key, res)
         return res
 
-    def set_studio_mode_enabled(self, enabled: bool):
-        self.cache.clear("studio_mode_enabled")
-        self.OBSController.set_studio_mode_enabled(enabled)
+    def set_studio_mode_enabled(self, enabled: bool, connection_id="default"):
+        cache_key = f"studio_mode_enabled_{connection_id}"
+        self.cache.clear(cache_key)
+        controller = self.get_controller(connection_id)
+        if controller and controller.connected:
+            controller.set_studio_mode_enabled(enabled)
 
-    def trigger_transition(self):
-        self.OBSController.trigger_transition()
+    def trigger_transition(self, connection_id="default"):
+        controller = self.get_controller(connection_id)
+        if controller and controller.connected:
+            controller.trigger_transition()
 
     # Input Mixing
-    def get_inputs(self) -> list[str]:
-        cached = self.cache.get("inputs", ttl=2.0)
+    def get_inputs(self, connection_id="default") -> list[str]:
+        cache_key = f"inputs_{connection_id}"
+        cached = self.cache.get(cache_key, ttl=2.0)
         if cached is not None:
             return cached
-        res = self.OBSController.get_inputs()
-        self.cache.set("inputs", res)
+            
+        controller = self.get_controller(connection_id)
+        if not controller or not controller.connected:
+            return []
+            
+        res = controller.get_inputs()
+        self.cache.set(cache_key, res)
         return res
 
-    def get_input_muted(self, input: str):
-        key = f"input_muted_{input}"
-        cached = self.cache.get(key, ttl=0.1)
+    def get_input_muted(self, input: str, connection_id="default"):
+        cache_key = f"input_muted_{input}_{connection_id}"
+        cached = self.cache.get(cache_key, ttl=0.1)
         if cached is not None:
             return cached
-        status = self.OBSController.get_input_muted(input)
+            
+        controller = self.get_controller(connection_id)
+        if not controller or not controller.connected:
+            return None
+            
+        status = controller.get_input_muted(input)
         if status is None:
-            return
+            return None
+            
         res = {
             "muted": status.datain["inputMuted"]
         }
-        self.cache.set(key, res)
+        self.cache.set(cache_key, res)
         return res
 
-    def set_input_muted(self, input: str, muted: bool):
-        key = f"input_muted_{input}"
-        self.cache.clear(key)
-        self.OBSController.set_input_muted(input, muted)
+    def set_input_muted(self, input: str, muted: bool, connection_id="default"):
+        cache_key = f"input_muted_{input}_{connection_id}"
+        self.cache.clear(cache_key)
+        controller = self.get_controller(connection_id)
+        if controller and controller.connected:
+            controller.set_input_muted(input, muted)
 
-    def get_input_volume(self, input: str):
-        status = self.OBSController.get_input_volume(input)
+    def get_input_volume(self, input: str, connection_id="default"):
+        controller = self.get_controller(connection_id)
+        if not controller or not controller.connected:
+            return None
+            
+        status = controller.get_input_volume(input)
         if status is None:
-            return
+            return None
         return {
             "volume": status.datain["inputVolumeDb"]
         }
 
-    def set_input_volume(self, input: str, volume: int):
-        self.OBSController.set_input_volume(input, volume)
+    def set_input_volume(self, input: str, volume: int, connection_id="default"):
+        controller = self.get_controller(connection_id)
+        if controller and controller.connected:
+            controller.set_input_volume(input, volume)
 
     # Scenes
-    def get_scene_names(self) -> list[str]:
-        cached = self.cache.get("scene_names", ttl=2.0)
+    def get_scene_names(self, connection_id="default") -> list[str]:
+        cache_key = f"scene_names_{connection_id}"
+        cached = self.cache.get(cache_key, ttl=2.0)
         if cached is not None:
             return cached
-        res = self.OBSController.get_scenes()
-        self.cache.set("scene_names", res)
+            
+        controller = self.get_controller(connection_id)
+        if not controller or not controller.connected:
+            return []
+            
+        res = controller.get_scenes()
+        self.cache.set(cache_key, res)
         return res
     
-    def switch_to_scene(self, scene:str):
-        self.cache.clear("current_program_scene")
-        self.OBSController.switch_to_scene(scene)
+    def switch_to_scene(self, scene: str, connection_id="default"):
+        cache_key = f"current_program_scene_{connection_id}"
+        self.cache.clear(cache_key)
+        controller = self.get_controller(connection_id)
+        if controller and controller.connected:
+            controller.switch_to_scene(scene)
 
-    def get_current_program_scene(self) -> str:
-        cached = self.cache.get("current_program_scene", ttl=0.1)
+    def get_current_program_scene(self, connection_id="default") -> str:
+        cache_key = f"current_program_scene_{connection_id}"
+        cached = self.cache.get(cache_key, ttl=0.1)
         if cached is not None:
             return cached
-        res = self.OBSController.get_current_program_scene()
-        self.cache.set("current_program_scene", res)
+            
+        controller = self.get_controller(connection_id)
+        if not controller or not controller.connected:
+            return None
+            
+        res = controller.get_current_program_scene()
+        self.cache.set(cache_key, res)
         return res
 
     # Scene Items
-    def get_scene_items(self, sceneName: str) -> list[str]:
-        return self.OBSController.get_scene_items(sceneName)
+    def get_scene_items(self, sceneName: str, connection_id="default") -> list[str]:
+        controller = self.get_controller(connection_id)
+        if not controller or not controller.connected:
+            return []
+        return controller.get_scene_items(sceneName)
 
-    def get_scene_item_enabled(self, sceneName: str, sourceName: str):
-        key = f"scene_item_enabled_{sceneName}_{sourceName}"
-        cached = self.cache.get(key, ttl=0.1)
+    def get_scene_item_enabled(self, sceneName: str, sourceName: str, connection_id="default"):
+        cache_key = f"scene_item_enabled_{sceneName}_{sourceName}_{connection_id}"
+        cached = self.cache.get(cache_key, ttl=0.1)
         if cached is not None:
             return cached
-        status = self.OBSController.get_scene_item_enabled(sceneName, sourceName)
+            
+        controller = self.get_controller(connection_id)
+        if not controller or not controller.connected:
+            return None
+            
+        status = controller.get_scene_item_enabled(sceneName, sourceName)
         if status is None:
-            return
+            return None
+            
         res = {
             "enabled": status.datain["sceneItemEnabled"]
         }
-        self.cache.set(key, res)
+        self.cache.set(cache_key, res)
         return res
 
-    def set_scene_item_enabled(self, sceneName: str, sourceName: str, enabled: bool):
-        key = f"scene_item_enabled_{sceneName}_{sourceName}"
-        self.cache.clear(key)
-        self.OBSController.set_scene_item_enabled(sceneName, sourceName, enabled)
+    def set_scene_item_enabled(self, sceneName: str, sourceName: str, enabled: bool, connection_id="default"):
+        cache_key = f"scene_item_enabled_{sceneName}_{sourceName}_{connection_id}"
+        self.cache.clear(cache_key)
+        controller = self.get_controller(connection_id)
+        if controller and controller.connected:
+            controller.set_scene_item_enabled(sceneName, sourceName, enabled)
 
     # Scene Collections
-    def get_scene_collections(self) -> list[str]:
-        return self.OBSController.get_scene_collections()
+    def get_scene_collections(self, connection_id="default") -> list[str]:
+        controller = self.get_controller(connection_id)
+        if not controller or not controller.connected:
+            return []
+        return controller.get_scene_collections()
 
-    def set_current_scene_collection(self, sceneCollectionName: str):
-        return self.OBSController.set_current_scene_collection(sceneCollectionName)
+    def set_current_scene_collection(self, sceneCollectionName: str, connection_id="default"):
+        controller = self.get_controller(connection_id)
+        if controller and controller.connected:
+            return controller.set_current_scene_collection(sceneCollectionName)
     
-    def get_source_filters(self, sourceName: str) -> list:
-        return self.OBSController.get_source_filters(sourceName)
+    def get_source_filters(self, sourceName: str, connection_id="default") -> list:
+        controller = self.get_controller(connection_id)
+        if not controller or not controller.connected:
+            return []
+        return controller.get_source_filters(sourceName)
     
-    def set_source_filter_enabled(self, sourceName: str, filterName: str, enabled: bool):
-        self.OBSController.set_source_filter_enabled(sourceName, filterName, enabled)
+    def set_source_filter_enabled(self, sourceName: str, filterName: str, enabled: bool, connection_id="default"):
+        controller = self.get_controller(connection_id)
+        if controller and controller.connected:
+            controller.set_source_filter_enabled(sourceName, filterName, enabled)
 
-    def get_source_filter(self, sourceName: str, filterName: str) -> None:
-        return self.OBSController.get_source_filter(sourceName, filterName)
+    def get_source_filter(self, sourceName: str, filterName: str, connection_id="default") -> None:
+        controller = self.get_controller(connection_id)
+        if not controller or not controller.connected:
+            return None
+        return controller.get_source_filter(sourceName, filterName)
     
     # Stats
-    def get_stats(self) -> dict:
-        cached = self.cache.get("stats", ttl=0.5)
+    def get_stats(self, connection_id="default") -> dict:
+        cache_key = f"stats_{connection_id}"
+        cached = self.cache.get(cache_key, ttl=0.5)
         if cached is not None:
             return cached
-        status = self.OBSController.get_stats()
+            
+        controller = self.get_controller(connection_id)
+        if not controller or not controller.connected:
+            return None
+            
+        status = controller.get_stats()
         if status is None:
-            return
+            return None
+            
         res = {
             "cpu_usage": status.datain.get("cpuUsage", 0.0),
             "fps": status.datain.get("activeFps", 0.0),
             "memory_usage": status.datain.get("memoryUsage", 0.0)
         }
-        self.cache.set("stats", res)
+        self.cache.set(cache_key, res)
         return res
 
-    def get_video_settings(self) -> dict:
-        cached = self.cache.get("video_settings", ttl=10.0)
+    def get_video_settings(self, connection_id="default") -> dict:
+        cache_key = f"video_settings_{connection_id}"
+        cached = self.cache.get(cache_key, ttl=10.0)
         if cached is not None:
             return cached
-        status = self.OBSController.get_video_settings()
+            
+        controller = self.get_controller(connection_id)
+        if not controller or not controller.connected:
+            return None
+            
+        status = controller.get_video_settings()
         if status is None:
-            return
+            return None
+            
         res = {
             "fps_numerator": status.datain.get("fpsNumerator", 60),
             "fps_denominator": status.datain.get("fpsDenominator", 1)
         }
-        self.cache.set("video_settings", res)
+        self.cache.set(cache_key, res)
         return res
 
-    def get_obs_stats(self) -> dict:
-        stats = self.get_stats()
-        stream_status = self.get_stream_status()
-        video_settings = self.get_video_settings()
+    def get_obs_stats(self, connection_id="default") -> dict:
+        stats = self.get_stats(connection_id=connection_id)
+        stream_status = self.get_stream_status(connection_id=connection_id)
+        video_settings = self.get_video_settings(connection_id=connection_id)
         
         target_fps = 60
         if video_settings:
@@ -333,20 +590,19 @@ class Backend(BackendBase):
             current_bytes = stream_status.get("bytes", 0)
             current_time = time.time()
             
-            prev_bytes = getattr(self, "_prev_stream_bytes", 0)
-            prev_time = getattr(self, "_prev_stream_time", 0.0)
+            prev_bytes = self._prev_stream_bytes.get(connection_id, 0)
+            prev_time = self._prev_stream_time.get(connection_id, 0.0)
             
             if prev_time > 0.0 and current_bytes >= prev_bytes:
                 time_diff = current_time - prev_time
                 if time_diff > 0.05:
-                    # bandwidth in kbps
                     bandwidth = ((current_bytes - prev_bytes) * 8.0) / (time_diff * 1000.0)
             
-            self._prev_stream_bytes = current_bytes
-            self._prev_stream_time = current_time
+            self._prev_stream_bytes[connection_id] = current_bytes
+            self._prev_stream_time[connection_id] = current_time
         else:
-            self._prev_stream_bytes = 0
-            self._prev_stream_time = 0.0
+            self._prev_stream_bytes[connection_id] = 0
+            self._prev_stream_time[connection_id] = 0.0
             
         res = {
             "cpu_usage": stats.get("cpu_usage", 0.0) if stats else 0.0,
@@ -354,7 +610,7 @@ class Backend(BackendBase):
             "target_fps": target_fps,
             "streaming": stream_status.get("active", False) if stream_status else False,
             "reconnecting": stream_status.get("reconnecting", False) if stream_status else False,
-            "bandwidth": bandwidth # kbps
+            "bandwidth": bandwidth
         }
         return res
     

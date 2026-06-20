@@ -9,10 +9,12 @@ import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Gtk, Adw, Gdk
+from gi.repository import Gtk, Adw, Gdk, GLib
 
 import sys
 import os
+import uuid
+import threading
 from loguru import logger as log
 
 # Add plugin to sys.paths
@@ -45,6 +47,9 @@ class OBS(PluginBase):
     def __init__(self):
         super().__init__()
 
+        self.has_plugin_settings = True
+        self.migrate_connection_settings()
+
         # Launch backend
         print("launch backend")
         self.launch_backend(
@@ -59,7 +64,7 @@ class OBS(PluginBase):
 
         self.register(
             plugin_name=self.lm.get("plugin.name"),
-            github_repo="https://github.com/StreamController/OBSPlugin",
+            github_repo="https://github.com/oparada1988/OBSPlugin",
             plugin_version="1.0.1",
             app_version="1.0.0-alpha",
         )
@@ -311,9 +316,254 @@ class OBS(PluginBase):
         # Load custom css
         self.add_css_stylesheet(os.path.join(self.PATH, "style.css"))
 
-    def get_connected(self):
+    def get_connected(self, connection_id="default"):
         try:
-            return self.backend.get_connected()
+            return self.backend.get_connected(connection_id)
         except Exception as e:
             log.error(e)
             return False
+
+    def migrate_connection_settings(self):
+        settings = self.get_settings()
+        if "connections" not in settings:
+            ip = settings.get("ip", "localhost")
+            port = settings.get("port", 4455)
+            password = settings.get("password") or ""
+            settings["connections"] = [
+                {
+                    "id": "default",
+                    "name": "Default",
+                    "ip": ip,
+                    "port": int(port) if isinstance(port, (int, float)) or (isinstance(port, str) and port.isdigit()) else 4455,
+                    "password": password
+                }
+            ]
+            settings["default_connection"] = "default"
+            self.set_settings(settings)
+
+    def get_settings_area(self) -> Adw.PreferencesGroup:
+        pref_group = Adw.PreferencesGroup()
+        
+        main_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        pref_group.add(main_box)
+        
+        # Left sidebar
+        left_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        left_box.set_size_request(200, -1)
+        
+        self.profile_listbox = Gtk.ListBox()
+        self.profile_listbox.set_selection_mode(Gtk.SelectionMode.SINGLE)
+        
+        scroll_profiles = Gtk.ScrolledWindow()
+        scroll_profiles.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        scroll_profiles.set_child(self.profile_listbox)
+        scroll_profiles.set_size_request(-1, 200)
+        left_box.append(scroll_profiles)
+        
+        add_btn = Gtk.Button(label="Add Profile")
+        add_btn.connect("clicked", self.on_add_profile)
+        left_box.append(add_btn)
+        
+        # Right editor
+        right_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        right_box.set_hexpand(True)
+        
+        self.name_row = Adw.EntryRow(title="Profile Name")
+        self.ip_row = Adw.EntryRow(title="IP Address")
+        self.port_row = Adw.SpinRow.new_with_range(0, 65535, 1)
+        self.port_row.set_title("Port")
+        self.password_row = Adw.PasswordEntryRow(title="Password")
+        
+        right_box.append(self.name_row)
+        right_box.append(self.ip_row)
+        right_box.append(self.port_row)
+        right_box.append(self.password_row)
+        
+        self.status_info_label = Gtk.Label(label="")
+        self.status_info_label.set_halign(Gtk.Align.START)
+        right_box.append(self.status_info_label)
+        
+        # Action Buttons
+        btn_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        
+        test_btn = Gtk.Button(label="Test Connection")
+        test_btn.connect("clicked", self.on_test_connection)
+        
+        del_btn = Gtk.Button(label="Delete Profile")
+        del_btn.connect("clicked", self.on_delete_profile)
+        
+        save_btn = Gtk.Button(label="Save Profile")
+        save_btn.connect("clicked", self.on_save_profile)
+        save_btn.add_css_class("suggested-action")
+        
+        btn_box.append(test_btn)
+        btn_box.append(del_btn)
+        btn_box.append(save_btn)
+        right_box.append(btn_box)
+        
+        main_box.append(left_box)
+        main_box.append(right_box)
+        
+        self.profile_listbox.connect("row-selected", self.on_profile_selected)
+        self.load_profiles_into_listbox()
+        
+        return pref_group
+
+    def update_editor_sensitivity(self, sensitive):
+        self.name_row.set_sensitive(sensitive)
+        self.ip_row.set_sensitive(sensitive)
+        self.port_row.set_sensitive(sensitive)
+        self.password_row.set_sensitive(sensitive)
+
+    def load_profiles_into_listbox(self):
+        while True:
+            row = self.profile_listbox.get_row_at_index(0)
+            if row is None:
+                break
+            self.profile_listbox.remove(row)
+            
+        settings = self.get_settings()
+        connections = settings.get("connections", [])
+        self.profiles_by_row = {}
+        
+        for conn in connections:
+            row = Gtk.ListBoxRow()
+            label = Gtk.Label(label=conn.get("name", "Unnamed"))
+            label.set_halign(Gtk.Align.START)
+            label.set_margin_start(10)
+            label.set_margin_end(10)
+            label.set_margin_top(6)
+            label.set_margin_bottom(6)
+            row.set_child(label)
+            self.profile_listbox.append(row)
+            self.profiles_by_row[row] = conn
+            
+        first_row = self.profile_listbox.get_row_at_index(0)
+        if first_row:
+            self.profile_listbox.select_row(first_row)
+        else:
+            self.on_profile_selected(self.profile_listbox, None)
+
+    def on_profile_selected(self, listbox, row):
+        if row is None or row not in self.profiles_by_row:
+            self.active_profile_id = None
+            self.update_editor_sensitivity(False)
+            self.name_row.set_text("")
+            self.ip_row.set_text("")
+            self.port_row.set_value(4455)
+            self.password_row.set_text("")
+            self.status_info_label.set_label("")
+            return
+            
+        profile = self.profiles_by_row[row]
+        self.active_profile_id = profile["id"]
+        self.update_editor_sensitivity(True)
+        
+        self.name_row.set_text(profile.get("name", ""))
+        self.ip_row.set_text(profile.get("ip", "localhost"))
+        try:
+            self.port_row.set_value(int(profile.get("port", 4455)))
+        except ValueError:
+            self.port_row.set_value(4455)
+        self.password_row.set_text(profile.get("password", ""))
+        self.status_info_label.set_label("")
+        self.status_info_label.remove_css_class("green")
+        self.status_info_label.remove_css_class("red")
+
+    def on_add_profile(self, button):
+        settings = self.get_settings()
+        connections = settings.setdefault("connections", [])
+        
+        new_id = str(uuid.uuid4())
+        new_profile = {
+            "id": new_id,
+            "name": f"OBS Profile {len(connections) + 1}",
+            "ip": "localhost",
+            "port": 4455,
+            "password": ""
+        }
+        connections.append(new_profile)
+        self.set_settings(settings)
+        
+        self.load_profiles_into_listbox()
+        
+        for row, conn in self.profiles_by_row.items():
+            if conn["id"] == new_id:
+                self.profile_listbox.select_row(row)
+                break
+
+    def on_delete_profile(self, button):
+        if not hasattr(self, "active_profile_id") or not self.active_profile_id:
+            return
+            
+        settings = self.get_settings()
+        connections = settings.get("connections", [])
+        connections = [c for c in connections if c["id"] != self.active_profile_id]
+        settings["connections"] = connections
+        
+        if settings.get("default_connection") == self.active_profile_id:
+            settings["default_connection"] = connections[0]["id"] if connections else ""
+            
+        self.set_settings(settings)
+        self.active_profile_id = None
+        self.load_profiles_into_listbox()
+        self.backend.reload_connections()
+
+    def on_save_profile(self, button):
+        if not hasattr(self, "active_profile_id") or not self.active_profile_id:
+            return
+            
+        settings = self.get_settings()
+        connections = settings.get("connections", [])
+        
+        for conn in connections:
+            if conn["id"] == self.active_profile_id:
+                conn["name"] = self.name_row.get_text().strip() or "Unnamed Profile"
+                conn["ip"] = self.ip_row.get_text().strip()
+                try:
+                    conn["port"] = int(self.port_row.get_value())
+                except ValueError:
+                    conn["port"] = 4455
+                conn["password"] = self.password_row.get_text()
+                break
+                
+        self.set_settings(settings)
+        selected_id = self.active_profile_id
+        self.load_profiles_into_listbox()
+        
+        for row, conn in self.profiles_by_row.items():
+            if conn["id"] == selected_id:
+                self.profile_listbox.select_row(row)
+                break
+                
+        self.backend.reload_connections()
+
+    def on_test_connection(self, button):
+        if not hasattr(self, "active_profile_id") or not self.active_profile_id:
+            return
+            
+        host = self.ip_row.get_text().strip()
+        port = int(self.port_row.get_value())
+        password = self.password_row.get_text()
+        
+        self.status_info_label.set_label("Testing connection...")
+        self.status_info_label.remove_css_class("green")
+        self.status_info_label.remove_css_class("red")
+        
+        def run_test():
+            result = self.backend.test_connection(host, port, password)
+            GLib.idle_add(self.show_test_result, result)
+            
+        threading.Thread(target=run_test, daemon=True, name="test_connection").start()
+
+    def show_test_result(self, result):
+        if result.get("success"):
+            version_info = result.get("version", "Connected")
+            self.status_info_label.set_label(f"Success! OBS Version: {version_info}")
+            self.status_info_label.add_css_class("green")
+            self.status_info_label.remove_css_class("red")
+        else:
+            err = result.get("error", "Unknown error")
+            self.status_info_label.set_label(f"Failed: {err}")
+            self.status_info_label.add_css_class("red")
+            self.status_info_label.remove_css_class("green")

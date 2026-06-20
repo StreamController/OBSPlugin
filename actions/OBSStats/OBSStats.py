@@ -1,4 +1,4 @@
-from plugins.com_oparada1988_OBS_Plus.OBSActionBase import OBSActionBase
+from OBSActionBase import OBSActionBase
 from src.backend.DeckManagement.DeckController import DeckController
 from src.backend.PageManagement.Page import Page
 from src.backend.PluginManager.PluginBase import PluginBase
@@ -26,7 +26,7 @@ class OBSStats(OBSActionBase):
 
     def on_ready(self):
         # Connect to obs if not connected
-        if self.plugin_base.backend is not None:
+        if self.backend is not None:
             if not self.plugin_base.get_connected():
                 self.reconnect_obs()
 
@@ -200,13 +200,13 @@ class OBSStats(OBSActionBase):
         threading.Thread(target=self.update_stats, daemon=True, name="update_stats").start()
 
     def update_stats(self):
-        if self.plugin_base.backend is None or not self.plugin_base.backend.get_connected():
+        if self.backend is None or not self.backend.get_connected():
             self.set_top_label(None)
             self.set_center_label("Offline")
             self.set_bottom_label(None)
             return
 
-        stats = self.plugin_base.backend.get_obs_stats()
+        stats = self.backend.get_obs_stats()
         if stats is None:
             self.set_top_label(None)
             self.set_center_label("Offline")

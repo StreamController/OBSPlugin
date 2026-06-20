@@ -1,5 +1,5 @@
 from .InputMuteBase import InputMuteBase
-from ..mixins import SetMixin
+from actions.mixins import SetMixin
 
 
 class SetInputMute(SetMixin, InputMuteBase):

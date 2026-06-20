@@ -1,4 +1,4 @@
-from plugins.com_oparada1988_OBS_Plus.OBSActionBase import OBSActionBase
+from OBSActionBase import OBSActionBase
 from src.backend.DeckManagement.DeckController import DeckController
 from src.backend.PageManagement.Page import Page
 from src.backend.PluginManager.PluginBase import PluginBase
@@ -21,7 +21,7 @@ class SwitchScene(OBSActionBase):
     def on_ready(self):
         self.current_state = -1
         # Connect to obs if not connected
-        if self.plugin_base.backend is not None:
+        if self.backend is not None:
             if not self.plugin_base.get_connected():            # self.plugin_base.obs.connect_to(host="localhost", port=4444, timeout=3, legacy=False)
                 self.reconnect_obs()
 
@@ -58,8 +58,8 @@ class SwitchScene(OBSActionBase):
             self.scene_model.remove(0)
 
         # Load model
-        if self.plugin_base.backend.get_connected():
-            scenes = self.plugin_base.backend.get_scene_names()
+        if self.backend.get_connected():
+            scenes = self.backend.get_scene_names()
             if scenes is None:
                 return
             for scene in scenes:
@@ -89,22 +89,22 @@ class SwitchScene(OBSActionBase):
         self.set_settings(settings)
 
     def on_key_down(self):
-        if self.plugin_base.backend is None or not self.plugin_base.backend.get_connected():
+        if self.backend is None or not self.backend.get_connected():
             self.show_error()
             return
         scene_name = self.get_settings().get("scene")
         if scene_name in [None, ""]:
             return
-        self.plugin_base.backend.switch_to_scene(scene_name)
+        self.backend.switch_to_scene(scene_name)
         self.on_tick()
 
     def show_current_scene_status(self):
-        if self.plugin_base.backend is None or not self.plugin_base.backend.get_connected():
+        if self.backend is None or not self.backend.get_connected():
             self.hide_error()
             self.show_for_state(0)
             return
         
-        current_scene = self.plugin_base.backend.get_current_program_scene()
+        current_scene = self.backend.get_current_program_scene()
         configured_scene = self.get_settings().get("scene")
 
         if configured_scene in [None, ""] or current_scene is None:

@@ -12,24 +12,21 @@ class OBSController(obsws):
         pass
 
     def validate_ip(self, host: str):
-        if host in ("localhost", "127.0.0.1"):
+        if not host:
+            return False
+        if host in ("localhost", "127.0.0.1", "::1"):
             return True
-
-        # We're explicitly disallowing non-localhost DNS entries here.
-        # Continuing this pattern for now, but this is probably the wrong thing
-        # to do long-term.
 
         try:
-            addr = ipaddress.ip_address(host)
-
-            # And we're disallowing IPv6 entries here, for compatibility with
-            # previous implementations. Again, probably the wrong thing
-            # long-term, but implementing this way to mitigate risk while we're
-            # in a bad-push state.
-            if not addr.version == ipaddress.IPv4Address.version:
-                raise ValueError()
+            ipaddress.ip_address(host)
             return True
         except ValueError:
+            pass
+
+        try:
+            socket.getaddrinfo(host, None)
+            return True
+        except socket.gaierror:
             return False
 
     def on_connect(self, obs):
@@ -185,7 +182,7 @@ class OBSController(obsws):
         try:
             request = self.call(requests.GetReplayBufferStatus())
 
-            if not request.datain:
+            if not request or not request.datain:
                 log.warning("Replay buffer is not enabled in OBS!")
                 return
             else:
@@ -220,7 +217,7 @@ class OBSController(obsws):
         try:
             request = self.call(requests.GetVirtualCamStatus())
 
-            if not request.datain:
+            if not request or not request.datain:
                 log.warning("Virtual camera is not enabled in OBS!")
                 return
             else:
@@ -278,7 +275,7 @@ class OBSController(obsws):
         try:
             request = self.call(requests.GetInputMute(inputName=input))
 
-            if not request.datain:
+            if not request or not request.datain:
                 log.warning("Cannot find the input!")
                 return
             else:
@@ -296,7 +293,7 @@ class OBSController(obsws):
         try:
             request = self.call(requests.GetInputVolume(inputName=input))
 
-            if not request.datain:
+            if not request or not request.datain:
                 log.warning("Cannot find the input!")
                 return
             else:
@@ -358,7 +355,7 @@ class OBSController(obsws):
     ## Credit for Studio Mode Preview fix: Rinma (https://github.com/Rinma)
     def switch_to_scene(self, scene:str) -> None:
         studioModeStatus = self.get_studio_mode_enabled()
-        if studioModeStatus.datain["studioModeEnabled"]:
+        if studioModeStatus and studioModeStatus.datain and studioModeStatus.datain.get("studioModeEnabled"):
             try:
                 self.call(requests.SetCurrentPreviewScene(sceneName=scene))
             except (obswebsocket.exceptions.MessageTimeout, websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
@@ -398,8 +395,8 @@ class OBSController(obsws):
 
     def get_source_filter(self, sourceName: str, filterName: str) -> None:
         try:
-            source_filter = self.call(requests.GetSourceFilter(sourceName=sourceName, filterName=filterName)).datain
-            return source_filter
+            request = self.call(requests.GetSourceFilter(sourceName=sourceName, filterName=filterName))
+            return request.datain if request else None
         except (obswebsocket.exceptions.MessageTimeout,  websocket._exceptions.WebSocketConnectionClosedException, KeyError) as e:
             log.error(e)
 

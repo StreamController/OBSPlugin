@@ -1,5 +1,5 @@
-from plugins.com_oparada1988_OBS_Plus.OBSActionBase import OBSActionBase
-from plugins.com_oparada1988_OBS_Plus.actions.mixins import State, MixinBase
+from OBSActionBase import OBSActionBase
+from actions.mixins import State, MixinBase
 from src.backend.DeckManagement.DeckController import DeckController
 from src.backend.PageManagement.Page import Page
 from src.backend.PluginManager.PluginBase import PluginBase
@@ -23,7 +23,7 @@ class FilterBase(OBSActionBase, MixinBase, ABC):
     def on_ready(self):
         self.current_state = State.UNKNOWN
         # Connect to obs if not connected
-        if self.plugin_base.backend is not None:
+        if self.backend is not None:
             if not self.plugin_base.get_connected():
                 self.reconnect_obs()
 
@@ -41,7 +41,7 @@ class FilterBase(OBSActionBase, MixinBase, ABC):
             self.show_error()
             return
 
-        status = self.plugin_base.backend.get_source_filter(self.get_settings().get("scene"), self.get_settings().get("filter"))
+        status = self.backend.get_source_filter(self.get_settings().get("scene"), self.get_settings().get("filter"))
         if status is None:
             self.current_state = State.UNKNOWN
             self.hide_error()
@@ -112,8 +112,8 @@ class FilterBase(OBSActionBase, MixinBase, ABC):
             self.filter_model.remove(0)
 
         # Load model
-        if self.plugin_base.backend.get_connected():
-            scenes = self.plugin_base.backend.get_scene_names()
+        if self.backend.get_connected():
+            scenes = self.backend.get_scene_names()
             if scenes is None:
                 return
             for scene in scenes:
@@ -131,8 +131,8 @@ class FilterBase(OBSActionBase, MixinBase, ABC):
         while self.filter_model.get_n_items() > 0:
             self.filter_model.remove(0)
 
-        if self.plugin_base.backend.get_connected():
-            filters = self.plugin_base.backend.get_source_filters(scene_name)
+        if self.backend.get_connected():
+            filters = self.backend.get_source_filters(scene_name)
             if filters is None:
                 self.show_error()
                 return
@@ -194,7 +194,7 @@ class FilterBase(OBSActionBase, MixinBase, ABC):
             return
 
         next_state = bool(self.next_state().value)
-        self.plugin_base.backend.set_source_filter_enabled(scene_name, filter_name, next_state)
+        self.backend.set_source_filter_enabled(scene_name, filter_name, next_state)
         self.on_tick()
 
     def on_tick(self):
