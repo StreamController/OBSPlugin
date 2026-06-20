@@ -1,4 +1,4 @@
-from plugins.com_oparada1988_OBS_Plus.OBSActionBase import OBSActionBase
+from OBSActionBase import OBSActionBase
 from src.backend.DeckManagement.DeckController import DeckController
 from src.backend.PageManagement.Page import Page
 from src.backend.PluginManager.PluginBase import PluginBase
@@ -18,7 +18,7 @@ class SwitchSceneCollection(OBSActionBase):
         
     def on_ready(self):
         # Connect to obs if not connected
-        if self.plugin_base.backend is not None:
+        if self.backend is not None:
             if not self.plugin_base.get_connected():            # self.plugin_base.obs.connect_to(host="localhost", port=4444, timeout=3, legacy=False)
                 self.reconnect_obs()
 
@@ -54,8 +54,8 @@ class SwitchSceneCollection(OBSActionBase):
             self.scene_collection_model.remove(0)
 
         # Load model
-        if self.plugin_base.backend.get_connected():
-            sceneCollections = self.plugin_base.backend.get_scene_collections()
+        if self.backend.get_connected():
+            sceneCollections = self.backend.get_scene_collections()
             if sceneCollections is None:
                 return
             for sceneCollection in sceneCollections:
@@ -88,7 +88,7 @@ class SwitchSceneCollection(OBSActionBase):
         scene_collection_name = self.get_settings().get("scene_collection")
         if scene_collection_name in [None, ""]:
             return
-        self.plugin_base.backend.set_current_scene_collection(scene_collection_name)
+        self.backend.set_current_scene_collection(scene_collection_name)
 
     def reconnect_obs(self):
         super().reconnect_obs()

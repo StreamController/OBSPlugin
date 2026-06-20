@@ -1,6 +1,6 @@
-# from ...OBSActionBase import OBSActionBase
+# from OBSActionBase import OBSActionBase
 import threading
-from plugins.com_oparada1988_OBS_Plus.OBSActionBase import OBSActionBase
+from OBSActionBase import OBSActionBase
 from src.backend.DeckManagement.DeckController import DeckController
 from src.backend.PageManagement.Page import Page
 from src.backend.PluginManager.PluginBase import PluginBase
@@ -14,7 +14,7 @@ class ToggleReplayBuffer(OBSActionBase):
     def on_ready(self):
         self.current_state = -1
         # Connect to obs if not connected
-        if self.plugin_base.backend is not None:
+        if self.backend is not None:
             if not self.plugin_base.get_connected():            # self.plugin_base.obs.connect_to(host="localhost", port=4444, timeout=3, legacy=False)
                 self.reconnect_obs()
 
@@ -22,11 +22,11 @@ class ToggleReplayBuffer(OBSActionBase):
         threading.Thread(target=self.show_current_replay_buffer_status, daemon=True, name="show_current_replay_buffer_status").start()
 
     def show_current_replay_buffer_status(self, new_paused = False):
-        if self.plugin_base.backend is None or not self.plugin_base.backend.get_connected():
+        if self.backend is None or not self.backend.get_connected():
             self.hide_error()
             self.show_for_state(0)
             return
-        status = self.plugin_base.backend.get_replay_buffer_status()
+        status = self.backend.get_replay_buffer_status()
         if status is None:
             self.hide_error()
             self.show_for_state(0)
@@ -55,13 +55,13 @@ class ToggleReplayBuffer(OBSActionBase):
         self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", image))
 
     def on_key_down(self):
-        if self.plugin_base.backend is None or not self.plugin_base.backend.get_connected():
+        if self.backend is None or not self.backend.get_connected():
             self.show_error()
             return
         if self.current_state == 0:
-            self.plugin_base.backend.start_replay_buffer()
+            self.backend.start_replay_buffer()
         else:
-            self.plugin_base.backend.stop_replay_buffer()
+            self.backend.stop_replay_buffer()
         self.on_tick()
 
     def on_tick(self):

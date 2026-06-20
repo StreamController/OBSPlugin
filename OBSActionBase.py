@@ -13,6 +13,7 @@ import globals as gl
 
 import threading
 import os
+import time
 from loguru import logger as log
 
 CLASS_ICON_MAP = {
@@ -90,12 +91,31 @@ CLASS_ICON_MAP = {
 }
 
 
+class BackendProxy:
+    def __init__(self, plugin_base, action):
+        self._plugin_base = plugin_base
+        self._action = action
+
+    def __getattr__(self, name):
+        backend = self._plugin_base.backend
+        if backend is None:
+            raise AttributeError("Backend is not initialized")
+            
+        attr = getattr(backend, name)
+        if callable(attr):
+            def wrapper(*args, **kwargs):
+                return attr(*args, connection_id=self._action.connection_id, **kwargs)
+            return wrapper
+        return attr
+
+
 class OBSActionBase(ActionBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.has_configuration = True
         self.custom_icon_entries = {}
+        self.custom_icon_clear_buttons = {}
         self.validated_custom_icons = {}
         self.custom_icon_cache_initialized = False
 
@@ -105,8 +125,23 @@ class OBSActionBase(ActionBase):
 
         self.update_custom_icon_cache()
 
-        if not self.plugin_base.backend.get_connected():
-            self.reconnect_obs()
+        if self.plugin_base.backend is not None:
+            if not self.backend.get_connected():
+                self.reconnect_obs()
+
+    @property
+    def connection_id(self):
+        return self.get_settings().get("connection_id", "default")
+
+    @property
+    def backend(self):
+        if not hasattr(self, "_backend_proxy"):
+            self._backend_proxy = BackendProxy(self.plugin_base, self)
+        return self._backend_proxy
+
+    @backend.setter
+    def backend(self, value):
+        pass
 
     def update_custom_icon_cache(self):
         self.validated_custom_icons = {}
@@ -121,36 +156,46 @@ class OBSActionBase(ActionBase):
             self.custom_icon_cache_initialized = True
 
     def get_config_rows(self) -> list:
-        self.ip_entry = Adw.EntryRow(title=self.plugin_base.lm.get("actions.base.ip.label"))
-        self.port_spinner = Adw.SpinRow.new_with_range(0, 65535, 1)
-        self.port_spinner.set_title(self.plugin_base.lm.get("actions.base.port.label"))
-        self.password_entry = Adw.PasswordEntryRow(title=self.plugin_base.lm.get("actions.base.password.label"))
+        self.connection_model = Gtk.StringList()
+        self.connection_row = Adw.ComboRow(
+            model=self.connection_model,
+            title="OBS Connection Profile"
+        )
 
         self.load_config_defaults()
 
         # Connect signals
-        self.ip_entry.connect("notify::text", self.on_change_ip)
-        self.port_spinner.connect("notify::value", self.on_change_port)
-        self.password_entry.connect("notify::text", self.on_change_password)
+        self.connection_row.connect("notify::selected", self.on_change_connection)
 
-        rows = [self.ip_entry, self.port_spinner, self.password_entry]
+        rows = [self.connection_row]
 
         # Add custom icon rows
         custom_icons = CLASS_ICON_MAP.get(self.__class__.__name__, [])
         for default_filename, label_text in custom_icons:
-            entry = Adw.EntryRow(title=label_text)
+            entry = Adw.ActionRow(title=label_text)
             current_val = self.get_settings().get(f"custom_icon_{default_filename}", "")
-            entry.set_text(current_val)
+            
+            # Set subtitle to filename without extension
+            if current_val:
+                filename = os.path.basename(current_val)
+                name_without_ext = os.path.splitext(filename)[0]
+                entry.set_subtitle(name_without_ext)
+            else:
+                entry.set_subtitle("Default Icon")
             
             # Create choose button
             btn = Gtk.Button.new_from_icon_name("document-open-symbolic")
             btn.connect("clicked", lambda button, df=default_filename: self.on_select_custom_icon(df))
             entry.add_suffix(btn)
             
-            # Connect text change signal
-            entry.connect("notify::text", lambda widget, pspec, df=default_filename: self.on_change_custom_icon_path(df))
+            # Create clear button
+            clear_btn = Gtk.Button.new_from_icon_name("edit-clear-symbolic")
+            clear_btn.set_sensitive(bool(current_val))
+            clear_btn.connect("clicked", lambda button, df=default_filename: self.on_clear_custom_icon(df))
+            entry.add_suffix(clear_btn)
             
             self.custom_icon_entries[default_filename] = entry
+            self.custom_icon_clear_buttons[default_filename] = clear_btn
             rows.append(entry)
 
         return rows
@@ -161,15 +206,23 @@ class OBSActionBase(ActionBase):
         def on_select_callback(path):
             if not path:
                 return
-            # Update the text entry
-            if default_filename in self.custom_icon_entries:
-                self.custom_icon_entries[default_filename].set_text(path)
             # Save setting
             settings = self.get_settings()
             if settings.get(f"custom_icon_{default_filename}") != path:
                 settings[f"custom_icon_{default_filename}"] = path
                 self.set_settings(settings)
                 self.update_custom_icon_cache()
+                
+                # Update subtitle
+                if default_filename in self.custom_icon_entries:
+                    filename = os.path.basename(path)
+                    name_without_ext = os.path.splitext(filename)[0]
+                    self.custom_icon_entries[default_filename].set_subtitle(name_without_ext)
+                
+                # Enable clear button
+                if default_filename in self.custom_icon_clear_buttons:
+                    self.custom_icon_clear_buttons[default_filename].set_sensitive(True)
+                
                 # Trigger update immediately
                 if hasattr(self, "_current_state"):
                     self._current_state = None
@@ -182,16 +235,18 @@ class OBSActionBase(ActionBase):
 
         GLib.idle_add(gl.app.let_user_select_asset, current_val, on_select_callback)
 
-    def on_change_custom_icon_path(self, default_filename):
-        if default_filename not in self.custom_icon_entries:
-            return
-        path = self.custom_icon_entries[default_filename].get_text().strip()
+    def on_clear_custom_icon(self, default_filename):
         settings = self.get_settings()
-        # Save setting only if changed to avoid loop
-        if settings.get(f"custom_icon_{default_filename}") != path:
-            settings[f"custom_icon_{default_filename}"] = path
+        if settings.get(f"custom_icon_{default_filename}"):
+            settings[f"custom_icon_{default_filename}"] = ""
             self.set_settings(settings)
             self.update_custom_icon_cache()
+            
+            if default_filename in self.custom_icon_entries:
+                self.custom_icon_entries[default_filename].set_subtitle("Default Icon")
+            if default_filename in self.custom_icon_clear_buttons:
+                self.custom_icon_clear_buttons[default_filename].set_sensitive(False)
+                
             # Trigger update immediately
             if hasattr(self, "_current_state"):
                 self._current_state = None
@@ -213,76 +268,58 @@ class OBSActionBase(ActionBase):
         super().set_media(media_path=media_path, *args, **kwargs)
 
     def load_config_defaults(self):
-        settings = self.plugin_base.get_settings()
-        ip = settings.setdefault("ip", "localhost")
-        port = settings.setdefault("port", 4455)
-        password = settings.setdefault("password", "")
-
-        # Update ui
-        self.ip_entry.set_text(ip)
-        self.port_spinner.set_value(port)
-        self.password_entry.set_text(password)
-        self.update_ip_warning_status()
+        self.connections_list = self.plugin_base.get_settings().get("connections", [])
+        
+        while self.connection_model.get_n_items() > 0:
+            self.connection_model.remove(0)
+            
+        selected_idx = 0
+        active_id = self.connection_id
+        
+        for i, conn in enumerate(self.connections_list):
+            self.connection_model.append(conn.get("name", "Unnamed"))
+            if conn.get("id") == active_id:
+                selected_idx = i
+                
+        self.connection_row.set_selected(selected_idx)
         self.update_status_label()
 
-    def on_change_ip(self, entry, *args):
-        settings = self.plugin_base.get_settings()
-        settings["ip"] = self.ip_entry.get_text().strip()
-        self.plugin_base.set_settings(settings)
+    def on_change_connection(self, combo, *args):
+        selected_idx = combo.get_selected()
+        if 0 <= selected_idx < len(self.connections_list):
+            settings = self.get_settings()
+            settings["connection_id"] = self.connections_list[selected_idx]["id"]
+            self.set_settings(settings)
+            
+            self.reconnect_obs()
+            self.on_connection_changed()
 
-        self.update_ip_warning_status()
-        self.reconnect_obs()
-
-    def update_ip_warning_status(self):
-        valid = self.plugin_base.backend.OBSController.validate_ip(self.ip_entry.get_text().strip())
-        if valid:
-            self.ip_entry.remove_css_class("error")
-        else:
-            self.ip_entry.add_css_class("error")
-
-    def on_change_port(self, spinner, *args):
-        settings = self.plugin_base.get_settings()
-        settings["port"] = int(spinner.get_value())
-        self.plugin_base.set_settings(settings)
-
-        self.reconnect_obs()
-
-    def on_change_password(self, entry, *args):
-        settings = self.plugin_base.get_settings()
-        settings["password"] = entry.get_text()
-        self.plugin_base.set_settings(settings)
-
-        self.reconnect_obs()
+    def on_connection_changed(self):
+        # Virtual method to be overridden by subclasses
+        pass
 
     def reconnect_obs(self):
         threading.Thread(target=self._reconnect_obs, daemon=True, name="reconnect_obs").start()
 
     def _reconnect_obs(self):
-        try:
-            self.plugin_base.backend.connect_to(
-                host=self.plugin_base.get_settings().get("ip", "localhost"),
-                port=self.plugin_base.get_settings().get("port", 4455),
-                password=self.plugin_base.get_settings().get("password") or "",
-                timeout=3,
-                legacy=False,
-            )
-        except Exception as e:
-            log.error(e)
-
-        if hasattr(self, "status_label"):
-            self.update_status_label()
+        # Let backend process sync
+        time.sleep(0.5)
+        self.update_status_label()
 
     def update_status_label(self) -> None:
-        threading.Thread(target=self._update_status_label, daemon=True, name="update_status_label").start()
+        if not hasattr(self, "status_label") or self.status_label is None:
+            return
+        connected = self.backend.get_connected()
+        GLib.idle_add(self._update_status_label, connected)
 
-    def _update_status_label(self):
-        if self.plugin_base.backend.get_connected():
-            print("connected - label")
+    def _update_status_label(self, connected):
+        if not hasattr(self, "status_label") or self.status_label is None:
+            return
+        if connected:
             self.status_label.set_label(self.plugin_base.lm.get("actions.base.status.connected"))
             self.status_label.remove_css_class("red")
             self.status_label.add_css_class("green")
         else:
-            print("not connected - label")
             self.status_label.set_label(self.plugin_base.lm.get("actions.base.status.no-connection"))
             self.status_label.remove_css_class("green")
             self.status_label.add_css_class("red")

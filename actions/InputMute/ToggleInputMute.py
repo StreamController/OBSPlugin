@@ -1,5 +1,5 @@
 from .InputMuteBase import InputMuteBase
-from ..mixins import ToggleMixin
+from actions.mixins import ToggleMixin
 
 
 class ToggleInputMute(ToggleMixin, InputMuteBase):

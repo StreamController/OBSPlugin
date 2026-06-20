@@ -1,4 +1,4 @@
-from plugins.com_oparada1988_OBS_Plus.actions.mixins import SetMixin
+from actions.mixins import SetMixin
 from .FilterBase import FilterBase
 
 

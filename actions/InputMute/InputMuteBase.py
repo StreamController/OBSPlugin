@@ -1,7 +1,7 @@
 from abc import ABC
 
-from plugins.com_oparada1988_OBS_Plus.OBSActionBase import OBSActionBase
-from plugins.com_oparada1988_OBS_Plus.actions.mixins import MixinBase, State
+from OBSActionBase import OBSActionBase
+from actions.mixins import MixinBase, State
 
 import os
 import threading
@@ -46,7 +46,7 @@ class InputMuteBase(OBSActionBase, MixinBase, ABC):
     def on_ready(self):
         self.current_state = State.UNKNOWN
         # Connect to obs if not connected
-        if self.plugin_base.backend is not None:
+        if self.backend is not None:
             if not self.plugin_base.get_connected():
                 self.reconnect_obs()
 
@@ -70,7 +70,7 @@ class InputMuteBase(OBSActionBase, MixinBase, ABC):
             self.set_media()
             return
 
-        status = self.plugin_base.backend.get_input_muted(self.input)
+        status = self.backend.get_input_muted(self.input)
         if status is None:
             self.current_state = State.UNKNOWN
             self.hide_error()
@@ -125,8 +125,8 @@ class InputMuteBase(OBSActionBase, MixinBase, ABC):
             self.input_model.remove(0)
 
         # Load model
-        if self.plugin_base.backend.get_connected():
-            inputs = self.plugin_base.backend.get_inputs()
+        if self.backend.get_connected():
+            inputs = self.backend.get_inputs()
             if inputs is None:
                 self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
                 return
@@ -173,7 +173,7 @@ class InputMuteBase(OBSActionBase, MixinBase, ABC):
 
         next_state = self.next_state()
         # API is inverse - set_disabled, not set_enabled
-        self.plugin_base.backend.set_input_muted(self.input, not bool(next_state.value))
+        self.backend.set_input_muted(self.input, not bool(next_state.value))
         self.on_tick()
 
     def on_tick(self):

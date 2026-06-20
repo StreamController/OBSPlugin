@@ -1,9 +1,9 @@
-from plugins.com_oparada1988_OBS_Plus.OBSActionBase import OBSActionBase
+from OBSActionBase import OBSActionBase
 from src.backend.DeckManagement.DeckController import DeckController
 from src.backend.PageManagement.Page import Page
 from src.backend.PluginManager.PluginBase import PluginBase
 
-from plugins.com_oparada1988_OBS_Plus.actions.mixins import State, MixinBase
+from actions.mixins import State, MixinBase
 
 from abc import ABC
 import os
@@ -30,7 +30,7 @@ class SceneItemBase(OBSActionBase, MixinBase, ABC):
     def on_ready(self):
         self.current_state = State.UNKNOWN
         # Connect to obs if not connected
-        if self.plugin_base.backend is not None:
+        if self.backend is not None:
             if not self.plugin_base.get_connected():
                 self.reconnect_obs()
 
@@ -53,7 +53,7 @@ class SceneItemBase(OBSActionBase, MixinBase, ABC):
             self.set_media()
             return
 
-        status = self.plugin_base.backend.get_scene_item_enabled(self.get_settings().get("scene"), self.get_settings().get("item"))
+        status = self.backend.get_scene_item_enabled(self.get_settings().get("scene"), self.get_settings().get("item"))
         if status is None:
             self.current_state = State.UNKNOWN
             self.hide_error()
@@ -111,8 +111,8 @@ class SceneItemBase(OBSActionBase, MixinBase, ABC):
             self.item_model.remove(0)
 
         # Load model
-        if self.plugin_base.backend.get_connected():
-            scenes = self.plugin_base.backend.get_scene_names()
+        if self.backend.get_connected():
+            scenes = self.backend.get_scene_names()
             if scenes is None:
                 return
             for scene in scenes:
@@ -130,8 +130,8 @@ class SceneItemBase(OBSActionBase, MixinBase, ABC):
         while self.item_model.get_n_items() > 0:
             self.item_model.remove(0)
 
-        if self.plugin_base.backend.get_connected():
-            items = self.plugin_base.backend.get_scene_items(scene_name)
+        if self.backend.get_connected():
+            items = self.backend.get_scene_items(scene_name)
             if items is None:
                 self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
                 return
@@ -193,7 +193,7 @@ class SceneItemBase(OBSActionBase, MixinBase, ABC):
             return
 
         next_bool = bool(self.next_state().value)
-        self.plugin_base.backend.set_scene_item_enabled(scene_name, item_name, next_bool)
+        self.backend.set_scene_item_enabled(scene_name, item_name, next_bool)
         self.on_tick()
 
     def on_tick(self):
