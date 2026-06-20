@@ -195,18 +195,18 @@ class Backend(BackendBase):
             return None
             
         status = controller.get_stream_status()
-        if status is None:
+        if status is None or not getattr(status, "status", False):
             return None
             
         res = {
-            "active": status.datain["outputActive"],
-            "reconnecting": status.datain["outputReconnecting"],
-            "timecode": status.datain["outputTimecode"],
-            "duration": status.datain["outputDuration"],
-            "congestion": status.datain["outputCongestion"],
-            "bytes": status.datain["outputBytes"],
-            "skipped_frames": status.datain["outputSkippedFrames"],
-            "total_frames": status.datain["outputTotalFrames"]
+            "active": status.datain.get("outputActive", False),
+            "reconnecting": status.datain.get("outputReconnecting", False),
+            "timecode": status.datain.get("outputTimecode", ""),
+            "duration": status.datain.get("outputDuration", 0),
+            "congestion": status.datain.get("outputCongestion", 0.0),
+            "bytes": status.datain.get("outputBytes", 0),
+            "skipped_frames": status.datain.get("outputSkippedFrames", 0),
+            "total_frames": status.datain.get("outputTotalFrames", 0)
         }
         self.cache.set(cache_key, res)
         return res
@@ -220,9 +220,9 @@ class Backend(BackendBase):
             return False
             
         status = controller.toggle_stream()
-        if status is None:
+        if status is None or not getattr(status, "status", False):
             return False
-        return status.datain["outputActive"]
+        return status.datain.get("outputActive", False)
     
     # Recording
     def get_record_status(self, connection_id="default") -> dict:
@@ -236,15 +236,15 @@ class Backend(BackendBase):
             return None
             
         status = controller.get_record_status()
-        if status is None:
+        if status is None or not getattr(status, "status", False):
             return None
             
         res = {
-            "active": status.datain["outputActive"],
-            "paused": status.datain["outputPaused"],
-            "timecode": status.datain["outputTimecode"],
-            "duration": status.datain["outputDuration"],
-            "bytes": status.datain["outputBytes"]
+            "active": status.datain.get("outputActive", False),
+            "paused": status.datain.get("outputPaused", False),
+            "timecode": status.datain.get("outputTimecode", ""),
+            "duration": status.datain.get("outputDuration", 0),
+            "bytes": status.datain.get("outputBytes", 0)
         }
         self.cache.set(cache_key, res)
         return res
@@ -275,11 +275,11 @@ class Backend(BackendBase):
             return None
             
         status = controller.get_replay_buffer_status()
-        if status is None:
+        if status is None or not getattr(status, "status", False):
             return None
             
         res = {
-            "active": status.datain["outputActive"]
+            "active": status.datain.get("outputActive", False)
         }
         self.cache.set(cache_key, res)
         return res
@@ -315,11 +315,11 @@ class Backend(BackendBase):
             return None
             
         status = controller.get_virtual_camera_status()
-        if status is None:
+        if status is None or not getattr(status, "status", False):
             return None
             
         res = {
-            "active": status.datain["outputActive"]
+            "active": status.datain.get("outputActive", False)
         }
         self.cache.set(cache_key, res)
         return res
@@ -350,11 +350,11 @@ class Backend(BackendBase):
             return None
             
         status = controller.get_studio_mode_enabled()
-        if status is None:
+        if status is None or not getattr(status, "status", False):
             return None
             
         res = {
-            "active": status.datain["studioModeEnabled"]
+            "active": status.datain.get("studioModeEnabled", False)
         }
         self.cache.set(cache_key, res)
         return res
@@ -397,11 +397,11 @@ class Backend(BackendBase):
             return None
             
         status = controller.get_input_muted(input)
-        if status is None:
+        if status is None or not getattr(status, "status", False):
             return None
             
         res = {
-            "muted": status.datain["inputMuted"]
+            "muted": status.datain.get("inputMuted", False)
         }
         self.cache.set(cache_key, res)
         return res
@@ -419,10 +419,10 @@ class Backend(BackendBase):
             return None
             
         status = controller.get_input_volume(input)
-        if status is None:
+        if status is None or not getattr(status, "status", False):
             return None
         return {
-            "volume": status.datain["inputVolumeDb"]
+            "volume": status.datain.get("inputVolumeDb", 0.0)
         }
 
     def set_input_volume(self, input: str, volume: int, connection_id="default"):
@@ -484,11 +484,11 @@ class Backend(BackendBase):
             return None
             
         status = controller.get_scene_item_enabled(sceneName, sourceName)
-        if status is None:
+        if status is None or not getattr(status, "status", False):
             return None
             
         res = {
-            "enabled": status.datain["sceneItemEnabled"]
+            "enabled": status.datain.get("sceneItemEnabled", False)
         }
         self.cache.set(cache_key, res)
         return res
@@ -541,7 +541,7 @@ class Backend(BackendBase):
             return None
             
         status = controller.get_stats()
-        if status is None:
+        if status is None or not getattr(status, "status", False):
             return None
             
         res = {
@@ -563,7 +563,7 @@ class Backend(BackendBase):
             return None
             
         status = controller.get_video_settings()
-        if status is None:
+        if status is None or not getattr(status, "status", False):
             return None
             
         res = {
