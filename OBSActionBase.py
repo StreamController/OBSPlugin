@@ -99,7 +99,9 @@ class BackendProxy:
     def __getattr__(self, name):
         backend = self._plugin_base.backend
         if backend is None:
-            raise AttributeError("Backend is not initialized")
+            if name == "get_connected":
+                return lambda *args, **kwargs: False
+            return lambda *args, **kwargs: None
             
         attr = getattr(backend, name)
         if callable(attr):
