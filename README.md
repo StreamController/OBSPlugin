@@ -1,4 +1,4 @@
-<img width="1000" height="360" alt="obsplus" src="store/Thumbnail.png" />
+<img width="1000" height="360" alt="obsplus" src="store/Thumbnail.png?v=2" />
 
 Official OBS Plugin for StreamController
 
