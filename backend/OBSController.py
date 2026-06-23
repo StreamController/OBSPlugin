@@ -51,8 +51,10 @@ class OBSController(obsws):
             if self.connected:
                 self.disconnect()
             if self.event_obs is not None:
-                if self.event_obs.ws is not None:
+                try:
                     self.event_obs.disconnect()
+                except Exception:
+                    pass
             return False
 
         try:
@@ -69,10 +71,19 @@ class OBSController(obsws):
                 self.event_obs = obsws(host=host, port=port, timeout=timeout, legacy=not legacy, on_connect=self.on_connect, on_disconnect=self.on_disconnect, authreconnect=5, **kwargs)
                 self.connect()
                 log.info("Successfully connected to OBS")
+                return True
 
             # ValueError: invalid port etc
             except (obswebsocket.exceptions.ConnectionFailure, ValueError) as e:
                 log.error(f"Failed to connect to OBS: {e}")
+                if self.connected:
+                    self.disconnect()
+                if self.event_obs is not None:
+                    try:
+                        self.event_obs.disconnect()
+                    except Exception:
+                        pass
+                return False
 
 
     ## Streaming

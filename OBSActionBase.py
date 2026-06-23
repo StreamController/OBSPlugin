@@ -307,6 +307,10 @@ class OBSActionBase(ActionBase):
         # Let backend process sync
         time.sleep(0.5)
         self.update_status_label()
+        GLib.idle_add(self.on_connection_established)
+
+    def on_connection_established(self):
+        pass
 
     def update_status_label(self) -> None:
         if not hasattr(self, "status_label") or self.status_label is None:

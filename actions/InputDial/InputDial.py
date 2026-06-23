@@ -207,8 +207,7 @@ class InputDial(OBSActionBase):
     def on_tick(self):
         self.show_current_input_volume()
 
-    def reconnect_obs(self):
-        super().reconnect_obs()
+    def on_connection_established(self):
         if hasattr(self, "input_model"):
             self.load_input_model()
             self.load_configs()

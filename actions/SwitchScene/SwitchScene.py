@@ -144,8 +144,7 @@ class SwitchScene(OBSActionBase):
     def on_tick(self):
         self.show_current_scene_status()
 
-    def reconnect_obs(self):
-        super().reconnect_obs()
+    def on_connection_established(self):
         if hasattr(self, "scene_model"):
             self.load_scene_model()
             self.load_configs()
