@@ -190,8 +190,7 @@ class InputMuteBase(OBSActionBase, MixinBase, ABC):
     def on_tick(self):
         self.show_current_input_mute_status()
 
-    def reconnect_obs(self):
-        super().reconnect_obs()
+    def on_connection_established(self):
         if hasattr(self, "input_model"):
             self.load_input_model()
             self.load_configs()

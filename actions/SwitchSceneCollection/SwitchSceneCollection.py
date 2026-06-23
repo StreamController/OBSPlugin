@@ -102,8 +102,7 @@ class SwitchSceneCollection(OBSActionBase):
             return
         self.backend.set_current_scene_collection(scene_collection_name)
 
-    def reconnect_obs(self):
-        super().reconnect_obs()
+    def on_connection_established(self):
         if hasattr(self, "scene_collection_model"):
             self.load_scene_collection_model()
             self.load_configs()

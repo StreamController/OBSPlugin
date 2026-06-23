@@ -19,22 +19,26 @@ import time
 class BackendCache:
     def __init__(self):
         self.data = {}
+        self.lock = threading.Lock()
         
     def get(self, key, ttl=0.1):
-        if key in self.data:
-            val, timestamp = self.data[key]
-            if time.time() - timestamp < ttl:
-                return val
-        return None
+        with self.lock:
+            if key in self.data:
+                val, timestamp = self.data[key]
+                if time.time() - timestamp < ttl:
+                    return val
+            return None
         
     def set(self, key, val):
-        self.data[key] = (val, time.time())
+        with self.lock:
+            self.data[key] = (val, time.time())
         
     def clear(self, key=None):
-        if key:
-            self.data.pop(key, None)
-        else:
-            self.data.clear()
+        with self.lock:
+            if key:
+                self.data.pop(key, None)
+            else:
+                self.data.clear()
 
 class Backend(BackendBase):
     def __init__(self):
@@ -43,9 +47,12 @@ class Backend(BackendBase):
         self.controllers = {}  # connection_id -> {"controller": OBSController, "config": config_dict}
         self._prev_stream_bytes = {}
         self._prev_stream_time = {}
+        self.connecting_ids = set()
+        self.connecting_lock = threading.Lock()
         
         # Initialize connections in background thread to avoid block
         threading.Thread(target=self.reload_connections, daemon=True, name="initial_connections_reload").start()
+        self._start_reconnect_loop()
 
     def get_controller(self, connection_id="default") -> OBSController:
         if connection_id not in self.controllers:
@@ -133,6 +140,10 @@ class Backend(BackendBase):
             threading.Thread(target=self._connect_profile, args=(cid, ip, port, password), daemon=True).start()
 
     def _connect_profile(self, cid, ip, port, password):
+        with self.connecting_lock:
+            if cid in self.connecting_ids:
+                return
+            self.connecting_ids.add(cid)
         try:
             if cid in self.controllers:
                 controller = self.controllers[cid]["controller"]
@@ -144,10 +155,37 @@ class Backend(BackendBase):
                 )
         except Exception as e:
             LOG.error(f"Error connecting profile {cid}: {e}")
+        finally:
+            with self.connecting_lock:
+                self.connecting_ids.discard(cid)
+
+    def _start_reconnect_loop(self):
+        def loop():
+            while True:
+                time.sleep(10)
+                try:
+                    controllers_snapshot = list(self.controllers.items())
+                except Exception:
+                    continue
+                for cid, info in controllers_snapshot:
+                    controller = info["controller"]
+                    if not controller.connected:
+                        cfg = info["config"]
+                        with self.connecting_lock:
+                            is_connecting = cid in self.connecting_ids
+                        if not is_connecting:
+                            LOG.info(f"Auto-reconnecting profile {cid} to {cfg.get('ip')}:{cfg.get('port')}...")
+                            threading.Thread(
+                                target=self._connect_profile,
+                                args=(cid, cfg.get("ip"), cfg.get("port"), cfg.get("password")),
+                                daemon=True,
+                                name=f"reconnect_{cid}"
+                            ).start()
+        threading.Thread(target=loop, daemon=True, name="obs_reconnect_loop").start()
 
     def test_connection(self, host, port, password) -> dict:
+        test_ctrl = OBSController()
         try:
-            test_ctrl = OBSController()
             success = test_ctrl.connect_to(host=host, port=port, password=password, timeout=3)
             if success and test_ctrl.connected:
                 version_info = "Connected"
@@ -155,15 +193,21 @@ class Backend(BackendBase):
                     version_info = test_ctrl.call(obswebsocket.requests.GetVersion()).getObsVersion()
                 except Exception:
                     pass
-                test_ctrl.disconnect()
-                if test_ctrl.event_obs is not None:
-                    if test_ctrl.event_obs.ws is not None:
-                        test_ctrl.event_obs.disconnect()
                 return {"success": True, "version": version_info}
             else:
                 return {"success": False, "error": "Could not connect"}
         except Exception as e:
             return {"success": False, "error": str(e)}
+        finally:
+            try:
+                test_ctrl.disconnect()
+            except Exception:
+                pass
+            if test_ctrl.event_obs is not None:
+                try:
+                    test_ctrl.event_obs.disconnect()
+                except Exception:
+                    pass
 
     """
     Wrapper methods around OBSController aiming to allow a communication

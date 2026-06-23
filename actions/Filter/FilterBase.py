@@ -224,8 +224,7 @@ class FilterBase(OBSActionBase, MixinBase, ABC):
     def on_tick(self):
         self.show_current_filter_status()
 
-    def reconnect_obs(self):
-        super().reconnect_obs()
+    def on_connection_established(self):
         if hasattr(self, "scene_model") and hasattr(self, "filter_model"):
             self.load_filter_model()
             self.load_configs()
