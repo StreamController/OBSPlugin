@@ -53,13 +53,15 @@ class SwitchSceneCollection(OBSActionBase):
         while self.scene_collection_model.get_n_items() > 0:
             self.scene_collection_model.remove(0)
 
+        # Prepend blank option
+        self.scene_collection_model.append("")
+
         # Load model
         if self.backend.get_connected():
             sceneCollections = self.backend.get_scene_collections()
-            if sceneCollections is None:
-                return
-            for sceneCollection in sceneCollections:
-                self.scene_collection_model.append(sceneCollection)
+            if sceneCollections is not None:
+                for sceneCollection in sceneCollections:
+                    self.scene_collection_model.append(sceneCollection)
 
         self.connect_signals()
 
@@ -69,19 +71,29 @@ class SwitchSceneCollection(OBSActionBase):
     def load_selected_device(self):
         self.disconnect_signals()
         settings = self.get_settings()
+        configured_collection = settings.get("scene_collection")
+
+        if not configured_collection:
+            self.scene_collection_row.set_selected(0)
+            self.connect_signals()
+            return
+
         for i, scene_collection_name in enumerate(self.scene_collection_model):
-            if scene_collection_name.get_string() == settings.get("scene_collection"):
+            if scene_collection_name.get_string() == configured_collection:
                 self.scene_collection_row.set_selected(i)
                 self.connect_signals()
                 return
             
-        self.scene_collection_row.set_selected(Gtk.INVALID_LIST_POSITION)
+        self.scene_collection_row.set_selected(0)
         self.connect_signals()
 
     def on_change_scene_collection(self, *args):
         settings = self.get_settings()
         selected_index = self.scene_collection_row.get_selected()
-        settings["scene_collection"] = self.scene_collection_model[selected_index].get_string()
+        if selected_index == Gtk.INVALID_LIST_POSITION or selected_index < 0 or selected_index >= self.scene_collection_model.get_n_items():
+            settings["scene_collection"] = ""
+        else:
+            settings["scene_collection"] = self.scene_collection_model[selected_index].get_string()
         self.set_settings(settings)
 
     def on_key_down(self):

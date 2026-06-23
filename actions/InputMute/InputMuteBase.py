@@ -124,14 +124,15 @@ class InputMuteBase(OBSActionBase, MixinBase, ABC):
         while self.input_model.get_n_items() > 0:
             self.input_model.remove(0)
 
+        # Prepend blank option
+        self.input_model.append("")
+
         # Load model
         if self.backend.get_connected():
             inputs = self.backend.get_inputs()
-            if inputs is None:
-                self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
-                return
-            for input in inputs:
-                self.input_model.append(input)
+            if inputs is not None:
+                for input in inputs:
+                    self.input_model.append(input)
 
         self.connect_signals()
 
@@ -140,18 +141,28 @@ class InputMuteBase(OBSActionBase, MixinBase, ABC):
 
     def load_selected_device(self):
         self.disconnect_signals()
+        configured_input = self.input
+
+        if not configured_input:
+            self.input_row.set_selected(0)
+            self.connect_signals()
+            return
+
         for i, input_name in enumerate(self.input_model):
-            if input_name.get_string() == self.input:
+            if input_name.get_string() == configured_input:
                 self.input_row.set_selected(i)
                 self.connect_signals()
                 return
 
-        self.input_row.set_selected(Gtk.INVALID_LIST_POSITION)
+        self.input_row.set_selected(0)
         self.connect_signals()
 
     def on_mute_input(self, *args):
         selected_index = self.input_row.get_selected()
-        self.input = self.input_model[selected_index].get_string()
+        if selected_index == Gtk.INVALID_LIST_POSITION or selected_index < 0 or selected_index >= self.input_model.get_n_items():
+            self.input = ""
+        else:
+            self.input = self.input_model[selected_index].get_string()
 
     def assert_valid_state_for_update(self):
         if not self.plugin_base.get_connected():

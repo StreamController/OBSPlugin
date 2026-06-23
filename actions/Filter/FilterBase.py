@@ -111,18 +111,16 @@ class FilterBase(OBSActionBase, MixinBase, ABC):
         while self.filter_model.get_n_items() > 0:
             self.filter_model.remove(0)
 
+        # Prepend blank options
+        self.scene_model.append("")
+        self.filter_model.append("")
+
         # Load model
         if self.backend.get_connected():
             scenes = self.backend.get_scene_names()
-            if scenes is None:
-                return
-            for scene in scenes:
-                self.scene_model.append(scene)
-            # Ensure selection is made if there's only one scene
-            if len(scenes) == 1:
-                self.get_settings()["scene"] = scenes[0]
-                self.scene_row.set_selected(0)
-                self.load_filters_for_scene(scenes[0])
+            if scenes is not None:
+                for scene in scenes:
+                    self.scene_model.append(scene)
 
         self.connect_signals()
 
@@ -131,6 +129,11 @@ class FilterBase(OBSActionBase, MixinBase, ABC):
         while self.filter_model.get_n_items() > 0:
             self.filter_model.remove(0)
 
+        self.filter_model.append("")
+
+        if not scene_name:
+            return
+
         if self.backend.get_connected():
             filters = self.backend.get_source_filters(scene_name)
             if filters is None:
@@ -138,9 +141,6 @@ class FilterBase(OBSActionBase, MixinBase, ABC):
                 return
             for item in filters:
                 self.filter_model.append(item.get("filterName"))
-            # Ensure selection is made if there's only one item
-            if len(filters) == 1:
-                self.filter_row.set_selected(0)
 
     def load_configs(self):
         self.load_config_values()
@@ -148,36 +148,60 @@ class FilterBase(OBSActionBase, MixinBase, ABC):
     def load_config_values(self):
         self.disconnect_signals()
         settings = self.get_settings()
-        for i, scene_name in enumerate(self.scene_model):
-            if scene_name.get_string() == settings.get("scene"):
-                self.scene_row.set_selected(i)
-                self.load_filters_for_scene(scene_name.get_string())
-                for j, item_name in enumerate(self.filter_model):
-                    if item_name.get_string() == settings.get("filter"):
-                        self.filter_row.set_selected(j)
-                        break
-                self.connect_signals()
-                return
+        configured_scene = settings.get("scene")
+        configured_filter = settings.get("filter")
 
-        self.scene_row.set_selected(Gtk.INVALID_LIST_POSITION)
-        self.filter_row.set_selected(Gtk.INVALID_LIST_POSITION)
+        scene_found = False
+        if configured_scene:
+            for i, scene_name in enumerate(self.scene_model):
+                if scene_name.get_string() == configured_scene:
+                    self.scene_row.set_selected(i)
+                    self.load_filters_for_scene(configured_scene)
+                    scene_found = True
+                    break
+        
+        if scene_found:
+            filter_found = False
+            if configured_filter:
+                for j, item_name in enumerate(self.filter_model):
+                    if item_name.get_string() == configured_filter:
+                        self.filter_row.set_selected(j)
+                        filter_found = True
+                        break
+            if not filter_found:
+                self.filter_row.set_selected(0)
+        else:
+            self.scene_row.set_selected(0)
+            self.load_filters_for_scene("")
+            self.filter_row.set_selected(0)
+
         self.connect_signals()
 
     def on_scene_selected(self, *args):
         settings = self.get_settings()
         selected_index_scene = self.scene_row.get_selected()
-        if selected_index_scene != Gtk.INVALID_LIST_POSITION:
+        if selected_index_scene == Gtk.INVALID_LIST_POSITION or selected_index_scene < 0 or selected_index_scene >= self.scene_model.get_n_items():
+            scene_name = ""
+        else:
             scene_name = self.scene_model[selected_index_scene].get_string()
-            settings["scene"] = scene_name
-            self.set_settings(settings)
-            self.load_filters_for_scene(scene_name)
+        
+        settings["scene"] = scene_name
+        settings["filter"] = ""
+        self.set_settings(settings)
+        
+        self.disconnect_signals()
+        self.load_filters_for_scene(scene_name)
+        self.filter_row.set_selected(0)
+        self.connect_signals()
 
     def on_filter_selected(self, *args):
         settings = self.get_settings()
         selected_index_item = self.filter_row.get_selected()
-        if selected_index_item != Gtk.INVALID_LIST_POSITION:
+        if selected_index_item == Gtk.INVALID_LIST_POSITION or selected_index_item < 0 or selected_index_item >= self.filter_model.get_n_items():
+            settings["filter"] = ""
+        else:
             settings["filter"] = self.filter_model[selected_index_item].get_string()
-            self.set_settings(settings)
+        self.set_settings(settings)
 
     def on_key_down(self):
         if not self.plugin_base.get_connected():
