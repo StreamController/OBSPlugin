@@ -110,18 +110,16 @@ class SceneItemBase(OBSActionBase, MixinBase, ABC):
         while self.item_model.get_n_items() > 0:
             self.item_model.remove(0)
 
+        # Prepend blank options
+        self.scene_model.append("")
+        self.item_model.append("")
+
         # Load model
         if self.backend.get_connected():
             scenes = self.backend.get_scene_names()
-            if scenes is None:
-                return
-            for scene in scenes:
-                self.scene_model.append(scene)
-            # Ensure selection is made if there's only one scene
-            if len(scenes) == 1:
-                self.get_settings()["scene"] = scenes[0]
-                self.scene_row.set_selected(0)
-                self.load_items_for_scene(scenes[0])
+            if scenes is not None:
+                for scene in scenes:
+                    self.scene_model.append(scene)
 
         self.connect_signals()
 
@@ -130,6 +128,11 @@ class SceneItemBase(OBSActionBase, MixinBase, ABC):
         while self.item_model.get_n_items() > 0:
             self.item_model.remove(0)
 
+        self.item_model.append("")
+
+        if not scene_name:
+            return
+
         if self.backend.get_connected():
             items = self.backend.get_scene_items(scene_name)
             if items is None:
@@ -137,9 +140,6 @@ class SceneItemBase(OBSActionBase, MixinBase, ABC):
                 return
             for item in items:
                 self.item_model.append(item)
-            # Ensure selection is made if there's only one item
-            if len(items) == 1:
-                self.item_row.set_selected(0)
 
     def load_configs(self):
         self.load_selected_device()
@@ -147,36 +147,60 @@ class SceneItemBase(OBSActionBase, MixinBase, ABC):
     def load_selected_device(self):
         self.disconnect_signals()
         settings = self.get_settings()
-        for i, scene_name in enumerate(self.scene_model):
-            if scene_name.get_string() == settings.get("scene"):
-                self.scene_row.set_selected(i)
-                self.load_items_for_scene(scene_name.get_string())
-                for j, item_name in enumerate(self.item_model):
-                    if item_name.get_string() == settings.get("item"):
-                        self.item_row.set_selected(j)
-                        break
-                self.connect_signals()
-                return
+        configured_scene = settings.get("scene")
+        configured_item = settings.get("item")
 
-        self.scene_row.set_selected(Gtk.INVALID_LIST_POSITION)
-        self.item_row.set_selected(Gtk.INVALID_LIST_POSITION)
+        scene_found = False
+        if configured_scene:
+            for i, scene_name in enumerate(self.scene_model):
+                if scene_name.get_string() == configured_scene:
+                    self.scene_row.set_selected(i)
+                    self.load_items_for_scene(configured_scene)
+                    scene_found = True
+                    break
+        
+        if scene_found:
+            item_found = False
+            if configured_item:
+                for j, item_name in enumerate(self.item_model):
+                    if item_name.get_string() == configured_item:
+                        self.item_row.set_selected(j)
+                        item_found = True
+                        break
+            if not item_found:
+                self.item_row.set_selected(0)
+        else:
+            self.scene_row.set_selected(0)
+            self.load_items_for_scene("")
+            self.item_row.set_selected(0)
+
         self.connect_signals()
 
     def on_scene_selected(self, *args):
         settings = self.get_settings()
         selected_index_scene = self.scene_row.get_selected()
-        if selected_index_scene != Gtk.INVALID_LIST_POSITION:
+        if selected_index_scene == Gtk.INVALID_LIST_POSITION or selected_index_scene < 0 or selected_index_scene >= self.scene_model.get_n_items():
+            scene_name = ""
+        else:
             scene_name = self.scene_model[selected_index_scene].get_string()
-            settings["scene"] = scene_name
-            self.set_settings(settings)
-            self.load_items_for_scene(scene_name)
+        
+        settings["scene"] = scene_name
+        settings["item"] = ""
+        self.set_settings(settings)
+        
+        self.disconnect_signals()
+        self.load_items_for_scene(scene_name)
+        self.item_row.set_selected(0)
+        self.connect_signals()
 
     def on_item_selected(self, *args):
         settings = self.get_settings()
         selected_index_item = self.item_row.get_selected()
-        if selected_index_item != Gtk.INVALID_LIST_POSITION:
+        if selected_index_item == Gtk.INVALID_LIST_POSITION or selected_index_item < 0 or selected_index_item >= self.item_model.get_n_items():
+            settings["item"] = ""
+        else:
             settings["item"] = self.item_model[selected_index_item].get_string()
-            self.set_settings(settings)
+        self.set_settings(settings)
 
     def on_key_down(self):
         if not self.plugin_base.get_connected():

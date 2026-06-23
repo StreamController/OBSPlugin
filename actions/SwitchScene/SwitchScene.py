@@ -57,13 +57,15 @@ class SwitchScene(OBSActionBase):
         while self.scene_model.get_n_items() > 0:
             self.scene_model.remove(0)
 
+        # Prepend blank option
+        self.scene_model.append("")
+
         # Load model
         if self.backend.get_connected():
             scenes = self.backend.get_scene_names()
-            if scenes is None:
-                return
-            for scene in scenes:
-                self.scene_model.append(scene)
+            if scenes is not None:
+                for scene in scenes:
+                    self.scene_model.append(scene)
 
         self.connect_signals()
 
@@ -73,19 +75,29 @@ class SwitchScene(OBSActionBase):
     def load_selected_device(self):
         self.disconnect_signals()
         settings = self.get_settings()
+        configured_scene = settings.get("scene")
+
+        if not configured_scene:
+            self.scene_row.set_selected(0)
+            self.connect_signals()
+            return
+
         for i, scene_name in enumerate(self.scene_model):
-            if scene_name.get_string() == settings.get("scene"):
+            if scene_name.get_string() == configured_scene:
                 self.scene_row.set_selected(i)
                 self.connect_signals()
                 return
             
-        self.scene_row.set_selected(Gtk.INVALID_LIST_POSITION)
+        self.scene_row.set_selected(0)
         self.connect_signals()
 
     def on_change_scene(self, *args):
         settings = self.get_settings()
         selected_index = self.scene_row.get_selected()
-        settings["scene"] = self.scene_model[selected_index].get_string()
+        if selected_index == Gtk.INVALID_LIST_POSITION or selected_index < 0 or selected_index >= self.scene_model.get_n_items():
+            settings["scene"] = ""
+        else:
+            settings["scene"] = self.scene_model[selected_index].get_string()
         self.set_settings(settings)
 
     def on_key_down(self):
