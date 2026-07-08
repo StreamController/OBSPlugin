@@ -474,6 +474,12 @@ class Backend(BackendBase):
         if controller and controller.connected:
             controller.set_input_volume(input, volume)
 
+    def get_input_volume_meter(self, input: str, connection_id="default") -> float:
+        controller = self.get_controller(connection_id)
+        if not controller or not controller.connected:
+            return 0.0
+        return controller.volume_meters.get(input, 0.0)
+
     # Scenes
     def get_scene_names(self, connection_id="default") -> list[str]:
         cache_key = f"scene_names_{connection_id}"
