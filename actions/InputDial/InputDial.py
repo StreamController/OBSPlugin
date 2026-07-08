@@ -144,24 +144,71 @@ class InputDial(OBSActionBase):
                 
             # Draw bar
             x0, y0, x1, y1 = 65, 75, 185, 85
-            bar_color = tuple(settings.get("bar_color", [66, 133, 244, 255]))
-            
-            draw.rounded_rectangle([x0, y0, x1, y1], radius=5, fill=(40, 40, 40, 255), outline=(0, 0, 0, 255), width=1)
+            w = x1 - x0
+            green_end = x0 + int(w * 0.667)
+            yellow_end = x0 + int(w * 0.85)
             
             is_live = settings.get("live_meter", False)
             if is_live:
+                # 1. Draw structured background scale (dark grey, medium grey, light grey)
+                bg_mask = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+                draw_bg_mask = ImageDraw.Draw(bg_mask)
+                draw_bg_mask.rounded_rectangle([x0, y0, x1, y1], radius=5, fill=(255, 255, 255, 255))
+                
+                bg_texture = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+                draw_bg_tex = ImageDraw.Draw(bg_texture)
+                draw_bg_tex.rectangle([x0, y0, green_end, y1], fill=(45, 45, 45, 255))
+                draw_bg_tex.rectangle([green_end, y0, yellow_end, y1], fill=(60, 60, 60, 255))
+                draw_bg_tex.rectangle([yellow_end, y0, x1, y1], fill=(75, 75, 75, 255))
+                
+                canvas = Image.composite(bg_texture, canvas, bg_mask.getchannel('A'))
+                draw = ImageDraw.Draw(canvas)
+                
+                # 2. Draw active volume fill
                 peak = 0.0
                 if self.backend and self.backend.get_connected():
                     peak = self.backend.get_input_volume_meter(input_name)
-                fill_pct = min(1.0, max(0.0, peak))
+                
+                if peak <= 0.001:
+                    db_level = -60.0
+                else:
+                    db_level = max(-60.0, 20.0 * math.log10(peak))
+                
+                fill_pct = (db_level - (-60.0)) / 60.0
+                if fill_pct > 0:
+                    x_fill = x0 + int((x1 - x0) * fill_pct)
+                    x_fill = max(x0 + 10, x_fill)
+                    
+                    bar_img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+                    draw_bar = ImageDraw.Draw(bar_img)
+                    draw_bar.rounded_rectangle([x0, y0, x_fill, y1], radius=5, fill=(255, 255, 255, 255))
+                    
+                    texture = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+                    draw_tex = ImageDraw.Draw(texture)
+                    draw_tex.rectangle([x0, y0, green_end, y1], fill=(0, 200, 80, 255))
+                    draw_tex.rectangle([green_end, y0, yellow_end, y1], fill=(220, 160, 0, 255))
+                    draw_tex.rectangle([yellow_end, y0, x1, y1], fill=(200, 30, 30, 255))
+                    
+                    canvas = Image.composite(texture, canvas, bar_img.getchannel('A'))
+                    draw = ImageDraw.Draw(canvas)
+                
+                # 3. Draw black separator lines on top
+                draw.line([(green_end, y0), (green_end, y1)], fill=(0, 0, 0, 255), width=1)
+                draw.line([(yellow_end, y0), (yellow_end, y1)], fill=(0, 0, 0, 255), width=1)
+                
+                # 4. Draw outer border
+                draw.rounded_rectangle([x0, y0, x1, y1], radius=5, fill=None, outline=(0, 0, 0, 255), width=1)
             else:
+                # Static color bar background
+                draw.rounded_rectangle([x0, y0, x1, y1], radius=5, fill=(40, 40, 40, 255), outline=(0, 0, 0, 255), width=1)
+                
+                bar_color = tuple(settings.get("bar_color", [66, 133, 244, 255]))
                 fill_pct = volume / 100.0
-                
-            if fill_pct > 0:
-                x_fill = x0 + int((x1 - x0) * fill_pct)
-                x_fill = max(x0 + 10, x_fill)
-                draw.rounded_rectangle([x0, y0, x_fill, y1], radius=5, fill=bar_color, outline=(0, 0, 0, 255), width=1)
-                
+                if fill_pct > 0:
+                    x_fill = x0 + int((x1 - x0) * fill_pct)
+                    x_fill = max(x0 + 10, x_fill)
+                    draw.rounded_rectangle([x0, y0, x_fill, y1], radius=5, fill=bar_color, outline=(0, 0, 0, 255), width=1)
+                    
             # Draw percentage
             label = f"{volume}%"
             draw.text((185, 68), label, font=font_percentage, fill=(255, 255, 255, 255), stroke_width=2, stroke_fill=(0, 0, 0, 255), anchor="rd")
