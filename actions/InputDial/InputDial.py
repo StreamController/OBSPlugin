@@ -25,6 +25,11 @@ class InputDial(OBSActionBase):
         self.muted = None
         self.volume = None
         self._update_loop_running = False
+        self._font_cache = {}
+        self._icon_cache = {}
+        self._static_bg_composite = None
+        self._active_texture = None
+        self._current_display_peak = 0.0
 
     def on_ready(self):
         # Connect to obs if not connected
@@ -55,7 +60,7 @@ class InputDial(OBSActionBase):
             self.update_ui()
             
             if self.get_settings().get("live_meter", False):
-                time.sleep(0.08)
+                time.sleep(0.025)  # Smooth 40fps rendering loop
             else:
                 time.sleep(0.2)
         self._update_loop_running = False
@@ -93,18 +98,28 @@ class InputDial(OBSActionBase):
         self.set_media(image=img, size=1.0, valign=0.0, halign=0.0)
 
     def get_font(self, size):
+        if size in self._font_cache:
+            return self._font_cache[size]
         try:
-            return ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", size)
+            font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", size)
         except Exception:
             try:
                 import subprocess
                 result = subprocess.run(["fc-match", "-f", "%{file}\n", "DejaVu Sans:style=Bold"], capture_output=True, text=True)
                 path = result.stdout.strip()
                 if path and os.path.exists(path):
-                    return ImageFont.truetype(path, size)
+                    font = ImageFont.truetype(path, size)
+                else:
+                    font = ImageFont.load_default()
             except Exception:
-                pass
-            return ImageFont.load_default()
+                font = ImageFont.load_default()
+        self._font_cache[size] = font
+        return font
+
+    def clear_render_cache(self):
+        self._static_bg_composite = None
+        self._active_texture = None
+        self._icon_cache = {}
 
     def render_image(self) -> Image.Image:
         is_dial = isinstance(self.input_ident, Input.Dial)
@@ -119,16 +134,31 @@ class InputDial(OBSActionBase):
         muted = True if self.muted is None else self.muted
         volume = 0 if self.volume is None else self.volume
         
+        # 1. Fetch cached and scaled icon
         default_icon_name = "input_muted.png" if muted else "input_unmuted.png"
         icon_path = self.validated_custom_icons.get(default_icon_name)
         if not icon_path or not os.path.exists(icon_path):
             icon_path = os.path.join(self.plugin_base.PATH, "assets", default_icon_name)
             
-        try:
-            icon_img = Image.open(icon_path).convert("RGBA")
-        except Exception:
-            icon_img = None
-            
+        cache_key = (icon_path, is_dial)
+        icon_img = self._icon_cache.get(cache_key)
+        if icon_img is None:
+            try:
+                raw_img = Image.open(icon_path).convert("RGBA")
+                w, h = raw_img.size
+                icon_size = 40 if is_dial else 48
+                if w > icon_size or h > icon_size:
+                    ratio = min(icon_size / w, icon_size / h)
+                    new_w = int(w * ratio)
+                    new_h = int(h * ratio)
+                    icon_img = raw_img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+                else:
+                    icon_img = raw_img
+                self._icon_cache[cache_key] = icon_img
+            except Exception as e:
+                log.error(f"Error loading icon: {e}")
+                icon_img = None
+                
         font_title = self.get_font(14)
         font_percentage = self.get_font(18)
         
@@ -136,26 +166,16 @@ class InputDial(OBSActionBase):
             # Draw input name
             draw.text((100, 20), input_name, font=font_title, fill=(255, 255, 255, 255), stroke_width=2, stroke_fill=(0, 0, 0, 255), anchor="mm")
             
-            # Draw icon
+            # Draw icon centered in the left region
             if icon_img:
-                w, h = icon_img.size
-                max_w, max_h = 45, 45
-                if w > max_w or h > max_h:
-                    ratio = min(max_w / w, max_h / h)
-                    new_w = int(w * ratio)
-                    new_h = int(h * ratio)
-                    icon_img = icon_img.resize((new_w, new_h), Image.Resampling.LANCZOS)
-                else:
-                    new_w, new_h = w, h
-                
-                # Center inside the left icon box (0..65 horizontally, 40..90 vertically)
+                new_w, new_h = icon_img.size
                 box_cx = 32
                 box_cy = 65
                 paste_x = box_cx - new_w // 2
                 paste_y = box_cy - new_h // 2
                 canvas.paste(icon_img, (paste_x, paste_y), icon_img)
                 
-            # Draw bar
+            # Draw bar coordinates
             x0, y0, x1, y1 = 65, 75, 185, 85
             w = x1 - x0
             green_end = x0 + int(w * 0.667)
@@ -163,18 +183,35 @@ class InputDial(OBSActionBase):
             
             is_live = settings.get("live_meter", False)
             if is_live:
-                # 1. Draw structured background scale (dim green, dim yellow, dim red)
-                bg_mask = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-                draw_bg_mask = ImageDraw.Draw(bg_mask)
-                draw_bg_mask.rounded_rectangle([x0, y0, x1, y1], radius=5, fill=(255, 255, 255, 255))
+                # Pre-render static background composite once
+                if self._static_bg_composite is None:
+                    bg_mask = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+                    draw_bg_mask = ImageDraw.Draw(bg_mask)
+                    draw_bg_mask.rounded_rectangle([x0, y0, x1, y1], radius=5, fill=(255, 255, 255, 255))
+                    
+                    bg_texture = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+                    draw_bg_tex = ImageDraw.Draw(bg_texture)
+                    draw_bg_tex.rectangle([x0, y0, green_end, y1], fill=(0, 80, 20, 255))
+                    draw_bg_tex.rectangle([green_end, y0, yellow_end, y1], fill=(80, 60, 0, 255))
+                    draw_bg_tex.rectangle([yellow_end, y0, x1, y1], fill=(80, 15, 15, 255))
+                    
+                    self._static_bg_composite = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+                    self._static_bg_composite = Image.composite(bg_texture, self._static_bg_composite, bg_mask.getchannel('A'))
+                    
+                    draw_bg = ImageDraw.Draw(self._static_bg_composite)
+                    draw_bg.line([(green_end, y0), (green_end, y1)], fill=(0, 0, 0, 255), width=1)
+                    draw_bg.line([(yellow_end, y0), (yellow_end, y1)], fill=(0, 0, 0, 255), width=1)
+                    draw_bg.rounded_rectangle([x0, y0, x1, y1], radius=5, fill=None, outline=(0, 0, 0, 255), width=1)
+                    
+                if self._active_texture is None:
+                    self._active_texture = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+                    draw_tex = ImageDraw.Draw(self._active_texture)
+                    draw_tex.rectangle([x0, y0, green_end, y1], fill=(0, 255, 70, 255))
+                    draw_tex.rectangle([green_end, y0, yellow_end, y1], fill=(255, 190, 0, 255))
+                    draw_tex.rectangle([yellow_end, y0, x1, y1], fill=(255, 40, 50, 255))
                 
-                bg_texture = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-                draw_bg_tex = ImageDraw.Draw(bg_texture)
-                draw_bg_tex.rectangle([x0, y0, green_end, y1], fill=(0, 80, 20, 255))
-                draw_bg_tex.rectangle([green_end, y0, yellow_end, y1], fill=(80, 60, 0, 255))
-                draw_bg_tex.rectangle([yellow_end, y0, x1, y1], fill=(80, 15, 15, 255))
-                
-                canvas = Image.composite(bg_texture, canvas, bg_mask.getchannel('A'))
+                # 1. Draw structured background scale
+                canvas.paste(self._static_bg_composite, (0, 0), self._static_bg_composite)
                 draw = ImageDraw.Draw(canvas)
                 
                 # 2. Draw active volume fill
@@ -182,10 +219,17 @@ class InputDial(OBSActionBase):
                 if self.backend and self.backend.get_connected():
                     peak = self.backend.get_input_volume_meter(input_name)
                 
-                if peak <= 0.001:
+                # Apply VU decay/smoothing filter for analog hardware look
+                if peak >= self._current_display_peak:
+                    self._current_display_peak = peak
+                else:
+                    self._current_display_peak = self._current_display_peak - 0.15 * (self._current_display_peak - peak)
+                
+                display_peak = self._current_display_peak
+                if display_peak <= 0.001:
                     db_level = -60.0
                 else:
-                    db_level = max(-60.0, 20.0 * math.log10(peak))
+                    db_level = max(-60.0, 20.0 * math.log10(display_peak))
                 
                 fill_pct = (db_level - (-60.0)) / 60.0
                 if fill_pct > 0:
@@ -196,21 +240,13 @@ class InputDial(OBSActionBase):
                     draw_bar = ImageDraw.Draw(bar_img)
                     draw_bar.rounded_rectangle([x0, y0, x_fill, y1], radius=5, fill=(255, 255, 255, 255))
                     
-                    texture = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-                    draw_tex = ImageDraw.Draw(texture)
-                    draw_tex.rectangle([x0, y0, green_end, y1], fill=(0, 255, 70, 255))
-                    draw_tex.rectangle([green_end, y0, yellow_end, y1], fill=(255, 190, 0, 255))
-                    draw_tex.rectangle([yellow_end, y0, x1, y1], fill=(255, 40, 50, 255))
-                    
-                    canvas = Image.composite(texture, canvas, bar_img.getchannel('A'))
+                    canvas = Image.composite(self._active_texture, canvas, bar_img.getchannel('A'))
                     draw = ImageDraw.Draw(canvas)
-                
-                # 3. Draw black separator lines on top
-                draw.line([(green_end, y0), (green_end, y1)], fill=(0, 0, 0, 255), width=1)
-                draw.line([(yellow_end, y0), (yellow_end, y1)], fill=(0, 0, 0, 255), width=1)
-                
-                # 4. Draw outer border
-                draw.rounded_rectangle([x0, y0, x1, y1], radius=5, fill=None, outline=(0, 0, 0, 255), width=1)
+                    
+                    # Re-draw black separator lines on top
+                    draw.line([(green_end, y0), (green_end, y1)], fill=(0, 0, 0, 255), width=1)
+                    draw.line([(yellow_end, y0), (yellow_end, y1)], fill=(0, 0, 0, 255), width=1)
+                    draw.rounded_rectangle([x0, y0, x1, y1], radius=5, fill=None, outline=(0, 0, 0, 255), width=1)
             else:
                 # Static color bar background
                 draw.rounded_rectangle([x0, y0, x1, y1], radius=5, fill=(40, 40, 40, 255), outline=(0, 0, 0, 255), width=1)
@@ -227,18 +263,8 @@ class InputDial(OBSActionBase):
             draw.text((185, 68), label, font=font_percentage, fill=(255, 255, 255, 255), stroke_width=2, stroke_fill=(0, 0, 0, 255), anchor="rd")
         else:
             # Button layout
-            icon_size = 48
             if icon_img:
-                w, h = icon_img.size
-                if w > icon_size or h > icon_size:
-                    ratio = min(icon_size / w, icon_size / h)
-                    new_w = int(w * ratio)
-                    new_h = int(h * ratio)
-                    icon_img = icon_img.resize((new_w, new_h), Image.Resampling.LANCZOS)
-                else:
-                    new_w, new_h = w, h
-                
-                # Center inside the upper part of the button (0..100 horizontally, 0..75 vertically)
+                new_w, new_h = icon_img.size
                 box_cx = 50
                 box_cy = 38
                 paste_x = box_cx - new_w // 2
@@ -352,6 +378,7 @@ class InputDial(OBSActionBase):
         else:
             settings["input"] = self.input_model[selected_index].get_string()
         self.set_settings(settings)
+        self.clear_render_cache()
         self.fetch_volume_info()
         self.update_ui()
 
@@ -359,12 +386,14 @@ class InputDial(OBSActionBase):
         settings = self.get_settings()
         settings["bar_color"] = list(self.color_row.color)
         self.set_settings(settings)
+        self.clear_render_cache()
         self.update_ui()
 
     def on_live_meter_changed(self, switch, *args):
         settings = self.get_settings()
         settings["live_meter"] = switch.get_active()
         self.set_settings(settings)
+        self.clear_render_cache()
         self.update_ui()
 
     def event_callback(self, event: InputEvent, data: dict = None):
