@@ -137,10 +137,23 @@ class InputDial(OBSActionBase):
             draw.text((100, 20), input_name, font=font_title, fill=(255, 255, 255, 255), stroke_width=2, stroke_fill=(0, 0, 0, 255), anchor="mm")
             
             # Draw icon
-            icon_size = 40
             if icon_img:
-                icon_img = icon_img.resize((icon_size, icon_size), Image.Resampling.LANCZOS)
-                canvas.paste(icon_img, (15, 45), icon_img)
+                w, h = icon_img.size
+                max_w, max_h = 45, 45
+                if w > max_w or h > max_h:
+                    ratio = min(max_w / w, max_h / h)
+                    new_w = int(w * ratio)
+                    new_h = int(h * ratio)
+                    icon_img = icon_img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+                else:
+                    new_w, new_h = w, h
+                
+                # Center inside the left icon box (0..65 horizontally, 40..90 vertically)
+                box_cx = 32
+                box_cy = 65
+                paste_x = box_cx - new_w // 2
+                paste_y = box_cy - new_h // 2
+                canvas.paste(icon_img, (paste_x, paste_y), icon_img)
                 
             # Draw bar
             x0, y0, x1, y1 = 65, 75, 185, 85
@@ -216,8 +229,21 @@ class InputDial(OBSActionBase):
             # Button layout
             icon_size = 48
             if icon_img:
-                icon_img = icon_img.resize((icon_size, icon_size), Image.Resampling.LANCZOS)
-                canvas.paste(icon_img, (26, 15), icon_img)
+                w, h = icon_img.size
+                if w > icon_size or h > icon_size:
+                    ratio = min(icon_size / w, icon_size / h)
+                    new_w = int(w * ratio)
+                    new_h = int(h * ratio)
+                    icon_img = icon_img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+                else:
+                    new_w, new_h = w, h
+                
+                # Center inside the upper part of the button (0..100 horizontally, 0..75 vertically)
+                box_cx = 50
+                box_cy = 38
+                paste_x = box_cx - new_w // 2
+                paste_y = box_cy - new_h // 2
+                canvas.paste(icon_img, (paste_x, paste_y), icon_img)
                 
             label = f"{volume}%"
             draw.text((50, 80), label, font=font_percentage, fill=(255, 255, 255, 255), stroke_width=2, stroke_fill=(0, 0, 0, 255), anchor="mm")
