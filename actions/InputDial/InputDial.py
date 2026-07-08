@@ -150,16 +150,16 @@ class InputDial(OBSActionBase):
             
             is_live = settings.get("live_meter", False)
             if is_live:
-                # 1. Draw structured background scale (dark grey, medium grey, light grey)
+                # 1. Draw structured background scale (dim green, dim yellow, dim red)
                 bg_mask = Image.new("RGBA", (width, height), (0, 0, 0, 0))
                 draw_bg_mask = ImageDraw.Draw(bg_mask)
                 draw_bg_mask.rounded_rectangle([x0, y0, x1, y1], radius=5, fill=(255, 255, 255, 255))
                 
                 bg_texture = Image.new("RGBA", (width, height), (0, 0, 0, 0))
                 draw_bg_tex = ImageDraw.Draw(bg_texture)
-                draw_bg_tex.rectangle([x0, y0, green_end, y1], fill=(45, 45, 45, 255))
-                draw_bg_tex.rectangle([green_end, y0, yellow_end, y1], fill=(60, 60, 60, 255))
-                draw_bg_tex.rectangle([yellow_end, y0, x1, y1], fill=(75, 75, 75, 255))
+                draw_bg_tex.rectangle([x0, y0, green_end, y1], fill=(0, 80, 20, 255))
+                draw_bg_tex.rectangle([green_end, y0, yellow_end, y1], fill=(80, 60, 0, 255))
+                draw_bg_tex.rectangle([yellow_end, y0, x1, y1], fill=(80, 15, 15, 255))
                 
                 canvas = Image.composite(bg_texture, canvas, bg_mask.getchannel('A'))
                 draw = ImageDraw.Draw(canvas)
@@ -185,9 +185,9 @@ class InputDial(OBSActionBase):
                     
                     texture = Image.new("RGBA", (width, height), (0, 0, 0, 0))
                     draw_tex = ImageDraw.Draw(texture)
-                    draw_tex.rectangle([x0, y0, green_end, y1], fill=(0, 200, 80, 255))
-                    draw_tex.rectangle([green_end, y0, yellow_end, y1], fill=(220, 160, 0, 255))
-                    draw_tex.rectangle([yellow_end, y0, x1, y1], fill=(200, 30, 30, 255))
+                    draw_tex.rectangle([x0, y0, green_end, y1], fill=(0, 255, 70, 255))
+                    draw_tex.rectangle([green_end, y0, yellow_end, y1], fill=(255, 190, 0, 255))
+                    draw_tex.rectangle([yellow_end, y0, x1, y1], fill=(255, 40, 50, 255))
                     
                     canvas = Image.composite(texture, canvas, bar_img.getchannel('A'))
                     draw = ImageDraw.Draw(canvas)
