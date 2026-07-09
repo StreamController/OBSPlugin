@@ -5,6 +5,44 @@ import websocket
 import socket
 import ipaddress
 
+# Monkeypatch obswebsocket to prevent reconnect thread from dying on WebSocketExceptions or other transient errors
+from obswebsocket.core import ReconnectThread
+
+original_connect = obsws.connect
+
+def wrapped_connect(self):
+    try:
+        original_connect(self)
+    except (socket.error, websocket.WebSocketException, Exception) as e:
+        if self.authreconnect:
+            if not getattr(self, "thread_reco", None):
+                log.warning(f"Connection failed: {e}. Reconnecting in {self.authreconnect} second(s).")
+                self.thread_reco = ReconnectThread(self)
+                self.thread_reco.daemon = True
+                self.thread_reco.start()
+            else:
+                log.warning(f"Connection failed: {e}. Reconnect timer already running.")
+        else:
+            from obswebsocket import exceptions
+            raise exceptions.ConnectionFailure(str(e))
+
+obsws.connect = wrapped_connect
+
+original_reconnect = obsws.reconnect
+
+def wrapped_reconnect(self):
+    try:
+        original_reconnect(self)
+    except Exception as e:
+        log.warning(f"Error during reconnect: {e}. Retrying in {self.authreconnect} second(s).")
+        if not getattr(self, "thread_reco", None):
+            self.thread_reco = ReconnectThread(self)
+            self.thread_reco.daemon = True
+            self.thread_reco.start()
+
+obsws.reconnect = wrapped_reconnect
+
+
 class OBSEventController(obsws):
     def _auth(self):
         import json
@@ -46,10 +84,20 @@ class OBSEventController(obsws):
 
 class OBSController(obsws):
     def __init__(self):
-        self.connected = False
+        self._connected_state = False
         self.event_obs: obsws = None # All events are connected to this to avoid crash if a request is made in an event
         self.volume_meters = {}
         pass
+
+    @property
+    def connected(self) -> bool:
+        req_conn = self.ws is not None and getattr(self.ws, "connected", False)
+        evt_conn = self.event_obs is not None and self.event_obs.ws is not None and getattr(self.event_obs.ws, "connected", False)
+        return req_conn and evt_conn
+
+    @connected.setter
+    def connected(self, value):
+        self._connected_state = value
 
     def validate_ip(self, host: str):
         if not host:
@@ -108,15 +156,19 @@ class OBSController(obsws):
             log.error(f"Error in on_volume_meters: {e}")
 
     def connect_to(self, host=None, port=None, timeout=1, legacy=False, **kwargs):
+        # Disconnect existing connections if any, to avoid resource leaks
+        try:
+            self.disconnect()
+        except Exception:
+            pass
+        if self.event_obs is not None:
+            try:
+                self.event_obs.disconnect()
+            except Exception:
+                pass
+
         if not self.validate_ip(host):
             log.error("Invalid IP address for OBS connection")
-            if self.connected:
-                self.disconnect()
-            if self.event_obs is not None:
-                try:
-                    self.event_obs.disconnect()
-                except Exception:
-                    pass
             return False
 
         try:
