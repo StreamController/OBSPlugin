@@ -5,10 +5,50 @@ import websocket
 import socket
 import ipaddress
 
+class OBSEventController(obsws):
+    def _auth(self):
+        import json
+        from obswebsocket import exceptions
+        
+        message = self.ws.recv()
+        log.debug("Got Hello message in OBSEventController: {}".format(message))
+        result = json.loads(message)
+
+        if result.get('op') != 0:
+            raise exceptions.ConnectionFailure(result.get('error', "Invalid Hello message."))
+        self.server_version = result['d'].get('obsWebSocketVersion')
+
+        if result['d'].get('authentication'):
+            auth = self._build_auth_string(result['d']['authentication']['salt'], result['d']['authentication']['challenge'])
+        else:
+            auth = ''
+
+        payload = {
+            "op": 1,
+            "d": {
+                "rpcVersion": 1,
+                "authentication": auth,
+                "eventSubscriptions": 1023 | (1 << 16)  # EventSubscription::All (1023) | InputVolumeMeters (65536)
+            }
+        }
+        log.debug("Sending Identify message: {}".format(json.dumps(payload)))
+        self.ws.send(json.dumps(payload))
+
+        message = self.ws.recv()
+        if not message:
+            raise exceptions.ConnectionFailure("Empty response to Identify, password may be incorrect.")
+        log.debug("Got Identified message: {}".format(message))
+        result = json.loads(message)
+        if result.get('op') != 2:
+            raise exceptions.ConnectionFailure(result.get('error', "Invalid Identified message."))
+        if result['d'].get('negotiatedRpcVersion') != 1:
+            raise exceptions.ConnectionFailure(result.get('error', "Invalid RPC version negotiated."))
+
 class OBSController(obsws):
     def __init__(self):
         self.connected = False
         self.event_obs: obsws = None # All events are connected to this to avoid crash if a request is made in an event
+        self.volume_meters = {}
         pass
 
     def validate_ip(self, host: str):
@@ -45,6 +85,28 @@ class OBSController(obsws):
         except Exception as e:
             log.error(e)
 
+    def on_volume_meters(self, event):
+        try:
+            inputs = event.datain.get("inputs", [])
+            for inp in inputs:
+                name = inp.get("inputName")
+                levels = inp.get("inputLevelsMul", [])
+                if name and levels:
+                    peaks = []
+                    for channel in levels:
+                        try:
+                            peaks.append(channel[1])
+                        except (IndexError, TypeError):
+                            try:
+                                peaks.append(channel[0])
+                            except (IndexError, TypeError):
+                                if isinstance(channel, (int, float)):
+                                    peaks.append(channel)
+                    if peaks:
+                        self.volume_meters[name] = max(peaks)
+        except Exception as e:
+            log.error(f"Error in on_volume_meters: {e}")
+
     def connect_to(self, host=None, port=None, timeout=1, legacy=False, **kwargs):
         if not self.validate_ip(host):
             log.error("Invalid IP address for OBS connection")
@@ -60,16 +122,26 @@ class OBSController(obsws):
         try:
             log.debug(f"Trying to connect to obs with legacy: {legacy}")
             super().__init__(host=host, port=port, timeout=timeout, legacy=legacy, on_connect=self.on_connect, on_disconnect=self.on_disconnect, authreconnect=5, **kwargs)
-            self.event_obs = obsws(host=host, port=port, timeout=timeout, legacy=legacy, on_connect=self.on_connect, on_disconnect=self.on_disconnect, authreconnect=5, **kwargs)
+            self.event_obs = OBSEventController(host=host, port=port, timeout=timeout, legacy=legacy, on_connect=self.on_connect, on_disconnect=self.on_disconnect, authreconnect=5, **kwargs)
             self.connect()
+            try:
+                self.event_obs.connect()
+                self.event_obs.register(self.on_volume_meters, obswebsocket.events.InputVolumeMeters)
+            except Exception as e:
+                log.error(f"Failed to connect event_obs: {e}")
             log.info("Successfully connected to OBS")
             return True
         except (obswebsocket.exceptions.ConnectionFailure, ValueError) as e:
             try:
                 log.error(f"Failed to connect to OBS with legacy: {legacy}, trying with legacy: {not legacy}")
                 super().__init__(host=host, port=port, timeout=timeout, legacy=not legacy, on_connect=self.on_connect, on_disconnect=self.on_disconnect, authreconnect=5, **kwargs)
-                self.event_obs = obsws(host=host, port=port, timeout=timeout, legacy=not legacy, on_connect=self.on_connect, on_disconnect=self.on_disconnect, authreconnect=5, **kwargs)
+                self.event_obs = OBSEventController(host=host, port=port, timeout=timeout, legacy=not legacy, on_connect=self.on_connect, on_disconnect=self.on_disconnect, authreconnect=5, **kwargs)
                 self.connect()
+                try:
+                    self.event_obs.connect()
+                    self.event_obs.register(self.on_volume_meters, obswebsocket.events.InputVolumeMeters)
+                except Exception as e:
+                    log.error(f"Failed to connect event_obs: {e}")
                 log.info("Successfully connected to OBS")
                 return True
 

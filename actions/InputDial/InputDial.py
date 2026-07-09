@@ -4,10 +4,14 @@ from src.backend.DeckManagement.InputIdentifier import Input, InputEvent
 from src.backend.PageManagement.Page import Page
 from src.backend.PluginManager.PluginBase import PluginBase
 from GtkHelper.GtkHelper import ComboRow
+from GtkHelper.ColorButtonRow import ColorButtonRow
 
 import os
 import threading
 import math
+import time
+from PIL import Image, ImageDraw, ImageFont
+from loguru import logger as log
 
 # Import gtk modules
 import gi
@@ -20,77 +24,284 @@ class InputDial(OBSActionBase):
         super().__init__(*args, **kwargs)
         self.muted = None
         self.volume = None
-        self.last_muted = None
-        self.last_volume = None
+        self._update_loop_running = False
+        self._font_cache = {}
+        self._icon_cache = {}
+        self._static_bg_composite = None
+        self._active_texture = None
+        self._red_texture = None
+        self._current_display_peak = 0.0
+        self._last_state = None
 
     def on_ready(self):
-        # Connect ot obs if not connected
+        # Connect to obs if not connected
         if self.backend is not None:
             if not self.plugin_base.get_connected():
                 self.reconnect_obs()
         
-        # Show current input volume
         self.muted = None
         self.volume = None
-        threading.Thread(target=self.show_current_input_volume, daemon=True, name="show_current_input_volume").start()
+        self.start_update_loop()
     
-    def show_current_input_volume(self):
+    def start_update_loop(self):
+        if self._update_loop_running:
+            return
+        self._update_loop_running = True
+        threading.Thread(target=self.update_loop, daemon=True, name="input_dial_update_loop").start()
+
+    def update_loop(self):
+        last_info_time = 0.0
+        while self.get_is_present():
+            current_time = time.time()
+            # Fetch mute/volume settings from OBS every 500ms
+            if current_time - last_info_time >= 0.5:
+                self.fetch_volume_info()
+                last_info_time = current_time
+            
+            # Redraw UI (uses cached meter peak level)
+            self.update_ui()
+            
+            if self.get_settings().get("live_meter", False):
+                time.sleep(0.04)  # Smooth 25fps rendering loop (saves ~37.5% CPU/IPC overhead)
+            else:
+                time.sleep(0.2)
+        self._update_loop_running = False
+
+    def fetch_volume_info(self):
         if self.backend is None or not self.backend.get_connected():
-            self.hide_error()
-            image = "input_muted.png"
-            if self.last_muted != True:
-                self.last_muted = True
-                self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", image), size=0.9)
-            if self.last_volume != "":
-                self.last_volume = ""
-                self.set_label("")
+            self.muted = True
+            self.volume = 0
             return
-        if not self.get_settings().get("input"):
-            self.show_error()
-            image = "input_muted.png"
-            if self.last_muted != True:
-                self.last_muted = True
-                self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", image), size=0.9)
+            
+        input_name = self.get_settings().get("input")
+        if not input_name:
+            self.muted = True
+            self.volume = 0
             return
+            
+        try:
+            status = self.backend.get_input_muted(input_name)
+            if status is not None:
+                self.muted = status["muted"]
+            else:
+                self.muted = True
+                
+            status = self.backend.get_input_volume(input_name)
+            if status is not None:
+                self.volume = self.db_to_volume(status["volume"])
+            else:
+                self.volume = 0
+        except Exception as e:
+            log.error(f"Error fetching volume info: {e}")
+
+    def update_ui(self):
+        img = self.render_image()
+        if img is None:
+            return  # Skip redundant updates to minimize CPU and IPC transmission load
+        self.set_label("")
+        self.set_media(image=img, size=1.0, valign=0.0, halign=0.0)
+
+    def get_font(self, size):
+        if size in self._font_cache:
+            return self._font_cache[size]
+        try:
+            font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", size)
+        except Exception:
+            try:
+                import subprocess
+                result = subprocess.run(["fc-match", "-f", "%{file}\n", "DejaVu Sans:style=Bold"], capture_output=True, text=True)
+                path = result.stdout.strip()
+                if path and os.path.exists(path):
+                    font = ImageFont.truetype(path, size)
+                else:
+                    font = ImageFont.load_default()
+            except Exception:
+                font = ImageFont.load_default()
+        self._font_cache[size] = font
+        return font
+
+    def clear_render_cache(self):
+        self._static_bg_composite = None
+        self._active_texture = None
+        self._red_texture = None
+        self._icon_cache = {}
+        self._last_state = None
+
+    def render_image(self) -> Image.Image:
+        is_dial = isinstance(self.input_ident, Input.Dial)
+        width = 200 if is_dial else 100
+        height = 100
         
-        # update muted
-        status = self.backend.get_input_muted(self.get_settings().get("input"))
-        if status is None:
-            self.hide_error()
-            image = "input_muted.png"
-            if self.last_muted != True:
-                self.last_muted = True
-                self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", image), size=0.9)
-            if self.last_volume != "":
-                self.last_volume = ""
-                self.set_label("")
-            return
-        self.muted = status["muted"]
-
-        # update volume
-        status = self.backend.get_input_volume(self.get_settings().get("input"))
-        if status is None:
-            self.hide_error()
-            image = "input_muted.png"
-            if self.last_muted != True:
-                self.last_muted = True
-                self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", image), size=0.9)
-            if self.last_volume != "":
-                self.last_volume = ""
-                self.set_label("")
-            return
-        self.volume = self.db_to_volume(status["volume"])
-
-        # Now render the button
-        image = "input_muted.png" if self.muted else "input_unmuted.png"
-        label = f"{self.volume}%"
-
-        if self.last_muted != self.muted:
-            self.last_muted = self.muted
-            self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", image), size=0.9)
-        if self.last_volume != self.volume:
-            self.last_volume = self.volume
-            self.set_label(label)
+        settings = self.get_settings()
+        input_name = settings.get("input", "No Input")
+        muted = True if self.muted is None else self.muted
+        volume = 0 if self.volume is None else self.volume
+        is_live = settings.get("live_meter", False)
+        bar_color = tuple(settings.get("bar_color", [66, 133, 244, 255]))
+        
+        # Calculate state key to avoid redundant image updates
+        if is_dial:
+            x0, x1 = 65, 185
+            if is_live:
+                peak = 0.0
+                if self.backend and self.backend.get_connected():
+                    peak = self.backend.get_input_volume_meter(input_name)
+                
+                # Apply VU decay/smoothing filter
+                if peak >= self._current_display_peak:
+                    self._current_display_peak = peak
+                else:
+                    self._current_display_peak = self._current_display_peak - 0.23 * (self._current_display_peak - peak)
+                
+                display_peak = self._current_display_peak
+                if display_peak <= 0.001:
+                    db_level = -60.0
+                else:
+                    db_level = max(-60.0, 20.0 * math.log10(display_peak))
+                
+                fill_pct = max(0.0, min(1.0, (db_level - (-60.0)) / 60.0))
+                x_fill = x0 + int((x1 - x0) * fill_pct)
+                x_fill = max(x0 + 10, x_fill)
+            else:
+                fill_pct = volume / 100.0
+                x_fill = x0 + int((x1 - x0) * fill_pct)
+                x_fill = max(x0 + 10, x_fill)
+        else:
+            x_fill = None
+            
+        state = (volume, muted, x_fill, is_live, bar_color)
+        if getattr(self, "_last_state", None) == state:
+            return None
+        self._last_state = state
+        
+        canvas = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(canvas)
+        
+        # 1. Fetch cached and scaled icon
+        default_icon_name = "input_muted.png" if muted else "input_unmuted.png"
+        icon_path = self.validated_custom_icons.get(default_icon_name)
+        if not icon_path or not os.path.exists(icon_path):
+            icon_path = os.path.join(self.plugin_base.PATH, "assets", default_icon_name)
+            
+        cache_key = (icon_path, is_dial)
+        icon_img = self._icon_cache.get(cache_key)
+        if icon_img is None:
+            try:
+                raw_img = Image.open(icon_path).convert("RGBA")
+                w, h = raw_img.size
+                icon_size = 40 if is_dial else 48
+                if w > icon_size or h > icon_size:
+                    ratio = min(icon_size / w, icon_size / h)
+                    new_w = int(w * ratio)
+                    new_h = int(h * ratio)
+                    icon_img = raw_img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+                else:
+                    icon_img = raw_img
+                self._icon_cache[cache_key] = icon_img
+            except Exception as e:
+                log.error(f"Error loading icon: {e}")
+                icon_img = None
+                
+        font_title = self.get_font(14)
+        font_percentage = self.get_font(18)
+        
+        if is_dial:
+            # Draw input name
+            draw.text((100, 20), input_name, font=font_title, fill=(255, 255, 255, 255), stroke_width=2, stroke_fill=(0, 0, 0, 255), anchor="mm")
+            
+            # Draw icon centered in the left region
+            if icon_img:
+                new_w, new_h = icon_img.size
+                box_cx = 32
+                box_cy = 65
+                paste_x = box_cx - new_w // 2
+                paste_y = box_cy - new_h // 2
+                canvas.paste(icon_img, (paste_x, paste_y), icon_img)
+                
+            # Draw bar coordinates
+            x0, y0, x1, y1 = 65, 75, 185, 85
+            w = x1 - x0
+            green_end = x0 + int(w * 0.667)
+            yellow_end = x0 + int(w * 0.85)
+            
+            if is_live:
+                # Pre-render static background composite once
+                if self._static_bg_composite is None:
+                    bg_mask = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+                    draw_bg_mask = ImageDraw.Draw(bg_mask)
+                    draw_bg_mask.rounded_rectangle([x0, y0, x1, y1], radius=5, fill=(255, 255, 255, 255))
+                    
+                    bg_texture = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+                    draw_bg_tex = ImageDraw.Draw(bg_texture)
+                    draw_bg_tex.rectangle([x0, y0, green_end, y1], fill=(0, 80, 20, 255))
+                    draw_bg_tex.rectangle([green_end, y0, yellow_end, y1], fill=(80, 60, 0, 255))
+                    draw_bg_tex.rectangle([yellow_end, y0, x1, y1], fill=(80, 15, 15, 255))
+                    
+                    self._static_bg_composite = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+                    self._static_bg_composite = Image.composite(bg_texture, self._static_bg_composite, bg_mask.getchannel('A'))
+                    
+                    draw_bg = ImageDraw.Draw(self._static_bg_composite)
+                    draw_bg.line([(green_end, y0), (green_end, y1)], fill=(0, 0, 0, 255), width=1)
+                    draw_bg.line([(yellow_end, y0), (yellow_end, y1)], fill=(0, 0, 0, 255), width=1)
+                    draw_bg.rounded_rectangle([x0, y0, x1, y1], radius=5, fill=None, outline=(0, 0, 0, 255), width=1)
+                    
+                if self._active_texture is None:
+                    self._active_texture = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+                    draw_tex = ImageDraw.Draw(self._active_texture)
+                    draw_tex.rectangle([x0, y0, green_end, y1], fill=(0, 255, 70, 255))
+                    draw_tex.rectangle([green_end, y0, yellow_end, y1], fill=(255, 190, 0, 255))
+                    draw_tex.rectangle([yellow_end, y0, x1, y1], fill=(255, 40, 50, 255))
+                
+                if self._red_texture is None:
+                    self._red_texture = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+                    draw_red = ImageDraw.Draw(self._red_texture)
+                    draw_red.rectangle([x0, y0, x1, y1], fill=(255, 40, 50, 255))
+                
+                # 1. Draw structured background scale
+                canvas.paste(self._static_bg_composite, (0, 0), self._static_bg_composite)
+                draw = ImageDraw.Draw(canvas)
+                
+                # 2. Draw active volume fill
+                if x_fill > x0:
+                    bar_img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+                    draw_bar = ImageDraw.Draw(bar_img)
+                    draw_bar.rounded_rectangle([x0, y0, x_fill, y1], radius=5, fill=(255, 255, 255, 255))
+                    
+                    if x_fill >= x1:
+                        canvas = Image.composite(self._red_texture, canvas, bar_img.getchannel('A'))
+                    else:
+                        canvas = Image.composite(self._active_texture, canvas, bar_img.getchannel('A'))
+                    
+                    draw = ImageDraw.Draw(canvas)
+                    
+                    # Re-draw black separator lines on top
+                    draw.line([(green_end, y0), (green_end, y1)], fill=(0, 0, 0, 255), width=1)
+                    draw.line([(yellow_end, y0), (yellow_end, y1)], fill=(0, 0, 0, 255), width=1)
+                    draw.rounded_rectangle([x0, y0, x1, y1], radius=5, fill=None, outline=(0, 0, 0, 255), width=1)
+            else:
+                # Static color bar background
+                draw.rounded_rectangle([x0, y0, x1, y1], radius=5, fill=(40, 40, 40, 255), outline=(0, 0, 0, 255), width=1)
+                
+                if x_fill > x0:
+                    draw.rounded_rectangle([x0, y0, x_fill, y1], radius=5, fill=bar_color, outline=(0, 0, 0, 255), width=1)
+                    
+            # Draw percentage
+            label = f"{volume}%"
+            draw.text((185, 68), label, font=font_percentage, fill=(255, 255, 255, 255), stroke_width=2, stroke_fill=(0, 0, 0, 255), anchor="rd")
+        else:
+            # Button layout
+            if icon_img:
+                new_w, new_h = icon_img.size
+                box_cx = 50
+                box_cy = 38
+                paste_x = box_cx - new_w // 2
+                paste_y = box_cy - new_h // 2
+                canvas.paste(icon_img, (paste_x, paste_y), icon_img)
+                
+            label = f"{volume}%"
+            draw.text((50, 80), label, font=font_percentage, fill=(255, 255, 255, 255), stroke_width=2, stroke_fill=(0, 0, 0, 255), anchor="mm")
+            
+        return canvas
 
     def get_config_rows(self) -> list:
         super_rows = super().get_config_rows()
@@ -98,33 +309,52 @@ class InputDial(OBSActionBase):
         self.input_model = Gtk.StringList()
         self.input_row = Adw.ComboRow(model=self.input_model, title=self.plugin_base.lm.get("actions.input-dial-row.label"))
 
+        self.color_row = ColorButtonRow(
+            title="Volume Bar Color",
+            default_color=(66, 133, 244, 255)
+        )
+
+        self.live_meter_row = Adw.ActionRow(title="Enable Live Meter")
+        self.live_meter_switch = Gtk.Switch()
+        self.live_meter_switch.set_valign(Gtk.Align.CENTER)
+        self.live_meter_row.add_suffix(self.live_meter_switch)
+
         self.connect_signals()
 
         self.load_input_model()
         self.load_configs()
 
         super_rows.append(self.input_row)
+        super_rows.append(self.color_row)
+        super_rows.append(self.live_meter_row)
         return super_rows
 
     def connect_signals(self):
         self.input_row.connect("notify::selected", self.on_input_change)
+        self.color_row.color_button.connect("color-set", self.on_color_changed)
+        self.live_meter_switch.connect("notify::active", self.on_live_meter_changed)
 
     def disconnect_signals(self):
         try:
             self.input_row.disconnect_by_func(self.on_input_change)
-        except TypeError as e:
+        except TypeError:
+            pass
+        try:
+            self.color_row.color_button.disconnect_by_func(self.on_color_changed)
+        except TypeError:
+            pass
+        try:
+            self.live_meter_switch.disconnect_by_func(self.on_live_meter_changed)
+        except TypeError:
             pass
     
     def load_input_model(self):
         self.disconnect_signals()
-        # Clear model
         while self.input_model.get_n_items() > 0:
             self.input_model.remove(0)
 
-        # Prepend blank option
         self.input_model.append("")
 
-        # Load model
         if self.backend.get_connected():
             inputs = self.backend.get_inputs()
             if inputs is not None:
@@ -135,6 +365,7 @@ class InputDial(OBSActionBase):
 
     def load_configs(self):
         self.load_selected_device()
+        self.load_color_and_switch_defaults()
 
     def load_selected_device(self):
         self.disconnect_signals()
@@ -154,6 +385,17 @@ class InputDial(OBSActionBase):
             
         self.input_row.set_selected(0)
         self.connect_signals()
+
+    def load_color_and_switch_defaults(self):
+        self.disconnect_signals()
+        settings = self.get_settings()
+        
+        color = settings.get("bar_color", [66, 133, 244, 255])
+        self.color_row.color = tuple(color)
+        
+        self.live_meter_switch.set_active(settings.get("live_meter", False))
+        
+        self.connect_signals()
     
     def on_input_change(self, *args):
         settings = self.get_settings()
@@ -163,6 +405,23 @@ class InputDial(OBSActionBase):
         else:
             settings["input"] = self.input_model[selected_index].get_string()
         self.set_settings(settings)
+        self.clear_render_cache()
+        self.fetch_volume_info()
+        self.update_ui()
+
+    def on_color_changed(self, *args):
+        settings = self.get_settings()
+        settings["bar_color"] = list(self.color_row.color)
+        self.set_settings(settings)
+        self.clear_render_cache()
+        self.update_ui()
+
+    def on_live_meter_changed(self, switch, *args):
+        settings = self.get_settings()
+        settings["live_meter"] = switch.get_active()
+        self.set_settings(settings)
+        self.clear_render_cache()
+        self.update_ui()
 
     def event_callback(self, event: InputEvent, data: dict = None):
         if event == Input.Key.Events.DOWN or event == Input.Dial.Events.DOWN:
@@ -183,8 +442,14 @@ class InputDial(OBSActionBase):
             return
 
         self.muted = not self.muted
-        self.backend.set_input_muted(input_name, self.muted)
-        self.on_tick()
+        threading.Thread(target=self._set_mute_backend, args=(input_name, self.muted), daemon=True).start()
+        self.update_ui()
+
+    def _set_mute_backend(self, input_name, muted):
+        try:
+            self.backend.set_input_muted(input_name, muted)
+        except Exception as e:
+            log.error(f"Error setting mute: {e}")
     
     def volume_change(self, diff):
         if self.backend is None or not self.backend.get_connected():
@@ -201,11 +466,18 @@ class InputDial(OBSActionBase):
             self.volume = 0
         if self.volume > 100:
             self.volume = 100
-        self.backend.set_input_volume(input_name, self.volume_to_db(self.volume))
-        self.on_tick()
+        
+        threading.Thread(target=self._set_volume_backend, args=(input_name, self.volume), daemon=True).start()
+        self.update_ui()
+
+    def _set_volume_backend(self, input_name, volume):
+        try:
+            self.backend.set_input_volume(input_name, self.volume_to_db(volume))
+        except Exception as e:
+            log.error(f"Error setting volume: {e}")
 
     def on_tick(self):
-        self.show_current_input_volume()
+        self.start_update_loop()
 
     def on_connection_established(self):
         if hasattr(self, "input_model"):
