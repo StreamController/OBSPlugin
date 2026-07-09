@@ -94,12 +94,14 @@ class OBSController(obsws):
                 if name and levels:
                     peaks = []
                     for channel in levels:
-                        if isinstance(channel, (list, tuple)) and len(channel) > 1:
+                        try:
                             peaks.append(channel[1])
-                        elif isinstance(channel, (list, tuple)) and len(channel) > 0:
-                            peaks.append(channel[0])
-                        elif isinstance(channel, (int, float)):
-                            peaks.append(channel)
+                        except (IndexError, TypeError):
+                            try:
+                                peaks.append(channel[0])
+                            except (IndexError, TypeError):
+                                if isinstance(channel, (int, float)):
+                                    peaks.append(channel)
                     if peaks:
                         self.volume_meters[name] = max(peaks)
         except Exception as e:

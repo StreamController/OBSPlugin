@@ -30,6 +30,7 @@ class InputDial(OBSActionBase):
         self._static_bg_composite = None
         self._active_texture = None
         self._current_display_peak = 0.0
+        self._last_state = None
 
     def on_ready(self):
         # Connect to obs if not connected
@@ -60,7 +61,7 @@ class InputDial(OBSActionBase):
             self.update_ui()
             
             if self.get_settings().get("live_meter", False):
-                time.sleep(0.025)  # Smooth 40fps rendering loop
+                time.sleep(0.04)  # Smooth 25fps rendering loop (saves ~37.5% CPU/IPC overhead)
             else:
                 time.sleep(0.2)
         self._update_loop_running = False
@@ -94,6 +95,8 @@ class InputDial(OBSActionBase):
 
     def update_ui(self):
         img = self.render_image()
+        if img is None:
+            return  # Skip redundant updates to minimize CPU and IPC transmission load
         self.set_label("")
         self.set_media(image=img, size=1.0, valign=0.0, halign=0.0)
 
@@ -120,19 +123,57 @@ class InputDial(OBSActionBase):
         self._static_bg_composite = None
         self._active_texture = None
         self._icon_cache = {}
+        self._last_state = None
 
     def render_image(self) -> Image.Image:
         is_dial = isinstance(self.input_ident, Input.Dial)
         width = 200 if is_dial else 100
         height = 100
         
-        canvas = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-        draw = ImageDraw.Draw(canvas)
-        
         settings = self.get_settings()
         input_name = settings.get("input", "No Input")
         muted = True if self.muted is None else self.muted
         volume = 0 if self.volume is None else self.volume
+        is_live = settings.get("live_meter", False)
+        bar_color = tuple(settings.get("bar_color", [66, 133, 244, 255]))
+        
+        # Calculate state key to avoid redundant image updates
+        if is_dial:
+            x0, x1 = 65, 185
+            if is_live:
+                peak = 0.0
+                if self.backend and self.backend.get_connected():
+                    peak = self.backend.get_input_volume_meter(input_name)
+                
+                # Apply VU decay/smoothing filter
+                if peak >= self._current_display_peak:
+                    self._current_display_peak = peak
+                else:
+                    self._current_display_peak = self._current_display_peak - 0.23 * (self._current_display_peak - peak)
+                
+                display_peak = self._current_display_peak
+                if display_peak <= 0.001:
+                    db_level = -60.0
+                else:
+                    db_level = max(-60.0, 20.0 * math.log10(display_peak))
+                
+                fill_pct = max(0.0, min(1.0, (db_level - (-60.0)) / 60.0))
+                x_fill = x0 + int((x1 - x0) * fill_pct)
+                x_fill = max(x0 + 10, x_fill)
+            else:
+                fill_pct = volume / 100.0
+                x_fill = x0 + int((x1 - x0) * fill_pct)
+                x_fill = max(x0 + 10, x_fill)
+        else:
+            x_fill = None
+            
+        state = (volume, muted, x_fill, is_live, bar_color)
+        if getattr(self, "_last_state", None) == state:
+            return None
+        self._last_state = state
+        
+        canvas = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(canvas)
         
         # 1. Fetch cached and scaled icon
         default_icon_name = "input_muted.png" if muted else "input_unmuted.png"
@@ -181,7 +222,6 @@ class InputDial(OBSActionBase):
             green_end = x0 + int(w * 0.667)
             yellow_end = x0 + int(w * 0.85)
             
-            is_live = settings.get("live_meter", False)
             if is_live:
                 # Pre-render static background composite once
                 if self._static_bg_composite is None:
@@ -215,27 +255,7 @@ class InputDial(OBSActionBase):
                 draw = ImageDraw.Draw(canvas)
                 
                 # 2. Draw active volume fill
-                peak = 0.0
-                if self.backend and self.backend.get_connected():
-                    peak = self.backend.get_input_volume_meter(input_name)
-                
-                # Apply VU decay/smoothing filter for analog hardware look
-                if peak >= self._current_display_peak:
-                    self._current_display_peak = peak
-                else:
-                    self._current_display_peak = self._current_display_peak - 0.15 * (self._current_display_peak - peak)
-                
-                display_peak = self._current_display_peak
-                if display_peak <= 0.001:
-                    db_level = -60.0
-                else:
-                    db_level = max(-60.0, 20.0 * math.log10(display_peak))
-                
-                fill_pct = max(0.0, min(1.0, (db_level - (-60.0)) / 60.0))
-                if fill_pct > 0:
-                    x_fill = x0 + int((x1 - x0) * fill_pct)
-                    x_fill = max(x0 + 10, x_fill)
-                    
+                if x_fill > x0:
                     bar_img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
                     draw_bar = ImageDraw.Draw(bar_img)
                     draw_bar.rounded_rectangle([x0, y0, x_fill, y1], radius=5, fill=(255, 255, 255, 255))
@@ -251,11 +271,7 @@ class InputDial(OBSActionBase):
                 # Static color bar background
                 draw.rounded_rectangle([x0, y0, x1, y1], radius=5, fill=(40, 40, 40, 255), outline=(0, 0, 0, 255), width=1)
                 
-                bar_color = tuple(settings.get("bar_color", [66, 133, 244, 255]))
-                fill_pct = volume / 100.0
-                if fill_pct > 0:
-                    x_fill = x0 + int((x1 - x0) * fill_pct)
-                    x_fill = max(x0 + 10, x_fill)
+                if x_fill > x0:
                     draw.rounded_rectangle([x0, y0, x_fill, y1], radius=5, fill=bar_color, outline=(0, 0, 0, 255), width=1)
                     
             # Draw percentage
