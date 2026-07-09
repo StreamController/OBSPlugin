@@ -231,7 +231,7 @@ class InputDial(OBSActionBase):
                 else:
                     db_level = max(-60.0, 20.0 * math.log10(display_peak))
                 
-                fill_pct = (db_level - (-60.0)) / 60.0
+                fill_pct = max(0.0, min(1.0, (db_level - (-60.0)) / 60.0))
                 if fill_pct > 0:
                     x_fill = x0 + int((x1 - x0) * fill_pct)
                     x_fill = max(x0 + 10, x_fill)

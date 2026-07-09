@@ -94,7 +94,9 @@ class OBSController(obsws):
                 if name and levels:
                     peaks = []
                     for channel in levels:
-                        if isinstance(channel, (list, tuple)) and len(channel) > 0:
+                        if isinstance(channel, (list, tuple)) and len(channel) > 1:
+                            peaks.append(channel[1])
+                        elif isinstance(channel, (list, tuple)) and len(channel) > 0:
                             peaks.append(channel[0])
                         elif isinstance(channel, (int, float)):
                             peaks.append(channel)
