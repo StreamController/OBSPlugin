@@ -29,6 +29,7 @@ class InputDial(OBSActionBase):
         self._icon_cache = {}
         self._static_bg_composite = None
         self._active_texture = None
+        self._red_texture = None
         self._current_display_peak = 0.0
         self._last_state = None
 
@@ -122,6 +123,7 @@ class InputDial(OBSActionBase):
     def clear_render_cache(self):
         self._static_bg_composite = None
         self._active_texture = None
+        self._red_texture = None
         self._icon_cache = {}
         self._last_state = None
 
@@ -250,6 +252,11 @@ class InputDial(OBSActionBase):
                     draw_tex.rectangle([green_end, y0, yellow_end, y1], fill=(255, 190, 0, 255))
                     draw_tex.rectangle([yellow_end, y0, x1, y1], fill=(255, 40, 50, 255))
                 
+                if self._red_texture is None:
+                    self._red_texture = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+                    draw_red = ImageDraw.Draw(self._red_texture)
+                    draw_red.rectangle([x0, y0, x1, y1], fill=(255, 40, 50, 255))
+                
                 # 1. Draw structured background scale
                 canvas.paste(self._static_bg_composite, (0, 0), self._static_bg_composite)
                 draw = ImageDraw.Draw(canvas)
@@ -260,7 +267,11 @@ class InputDial(OBSActionBase):
                     draw_bar = ImageDraw.Draw(bar_img)
                     draw_bar.rounded_rectangle([x0, y0, x_fill, y1], radius=5, fill=(255, 255, 255, 255))
                     
-                    canvas = Image.composite(self._active_texture, canvas, bar_img.getchannel('A'))
+                    if x_fill >= x1:
+                        canvas = Image.composite(self._red_texture, canvas, bar_img.getchannel('A'))
+                    else:
+                        canvas = Image.composite(self._active_texture, canvas, bar_img.getchannel('A'))
+                    
                     draw = ImageDraw.Draw(canvas)
                     
                     # Re-draw black separator lines on top
