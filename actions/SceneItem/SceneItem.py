@@ -85,7 +85,6 @@ class SceneItemBase(OBSActionBase, MixinBase, ABC):
         self.connect_signals()
 
         self.load_item_model()
-        self.load_configs()
 
         super_rows.append(self.scene_row)
         super_rows.append(self.item_row)
@@ -104,42 +103,72 @@ class SceneItemBase(OBSActionBase, MixinBase, ABC):
 
     def load_item_model(self):
         self.disconnect_signals()
-        # Clear model
         while self.scene_model.get_n_items() > 0:
             self.scene_model.remove(0)
         while self.item_model.get_n_items() > 0:
             self.item_model.remove(0)
 
-        # Prepend blank options
         self.scene_model.append("")
         self.item_model.append("")
 
-        # Load model
-        if self.backend.get_connected():
-            scenes = self.backend.get_scene_names()
-            if scenes is not None:
-                for scene in scenes:
-                    self.scene_model.append(scene)
+        def fetch_and_populate():
+            try:
+                if self.backend.get_connected():
+                    scenes = self.backend.get_scene_names()
+                    if scenes is not None:
+                        def populate():
+                            self.disconnect_signals()
+                            for scene in scenes:
+                                self.scene_model.append(scene)
+                            self.load_configs()
+                            self.connect_signals()
+                        GLib.idle_add(populate)
+                        return
+            except Exception as e:
+                pass
+            def fallback():
+                self.load_configs()
+                self.connect_signals()
+            GLib.idle_add(fallback)
 
-        self.connect_signals()
+        threading.Thread(target=fetch_and_populate, daemon=True, name="load_item_model").start()
 
-    def load_items_for_scene(self, scene_name):
-        # Clear items model
+    def load_items_for_scene(self, scene_name, on_done=None):
+        self.disconnect_signals()
         while self.item_model.get_n_items() > 0:
             self.item_model.remove(0)
 
         self.item_model.append("")
 
         if not scene_name:
+            if on_done:
+                on_done()
+            self.connect_signals()
             return
 
-        if self.backend.get_connected():
-            items = self.backend.get_scene_items(scene_name)
-            if items is None:
-                self.set_media(media_path=os.path.join(self.plugin_base.PATH, "assets", "error.png"))
-                return
-            for item in items:
-                self.item_model.append(item)
+        def fetch_and_populate():
+            try:
+                if self.backend.get_connected():
+                    items = self.backend.get_scene_items(scene_name)
+                    if items is not None:
+                        def populate():
+                            self.disconnect_signals()
+                            for item in items:
+                                self.item_model.append(item)
+                            if on_done:
+                                on_done()
+                            self.connect_signals()
+                        GLib.idle_add(populate)
+                        return
+            except Exception as e:
+                pass
+            def fallback():
+                if on_done:
+                    on_done()
+                self.connect_signals()
+            GLib.idle_add(fallback)
+
+        threading.Thread(target=fetch_and_populate, daemon=True, name="load_items_for_scene").start()
 
     def load_configs(self):
         self.load_selected_device()
@@ -155,26 +184,27 @@ class SceneItemBase(OBSActionBase, MixinBase, ABC):
             for i, scene_name in enumerate(self.scene_model):
                 if scene_name.get_string() == configured_scene:
                     self.scene_row.set_selected(i)
-                    self.load_items_for_scene(configured_scene)
+                    
+                    def select_item():
+                        self.disconnect_signals()
+                        item_found = False
+                        if configured_item:
+                            for j, item_name in enumerate(self.item_model):
+                                if item_name.get_string() == configured_item:
+                                    self.item_row.set_selected(j)
+                                    item_found = True
+                                    break
+                        if not item_found:
+                            self.item_row.set_selected(0)
+                        self.connect_signals()
+
+                    self.load_items_for_scene(configured_scene, on_done=select_item)
                     scene_found = True
                     break
         
-        if scene_found:
-            item_found = False
-            if configured_item:
-                for j, item_name in enumerate(self.item_model):
-                    if item_name.get_string() == configured_item:
-                        self.item_row.set_selected(j)
-                        item_found = True
-                        break
-            if not item_found:
-                self.item_row.set_selected(0)
-        else:
+        if not scene_found:
             self.scene_row.set_selected(0)
-            self.load_items_for_scene("")
-            self.item_row.set_selected(0)
-
-        self.connect_signals()
+            self.load_items_for_scene("", on_done=lambda: self.item_row.set_selected(0))
 
     def on_scene_selected(self, *args):
         settings = self.get_settings()
@@ -189,9 +219,7 @@ class SceneItemBase(OBSActionBase, MixinBase, ABC):
         self.set_settings(settings)
         
         self.disconnect_signals()
-        self.load_items_for_scene(scene_name)
-        self.item_row.set_selected(0)
-        self.connect_signals()
+        self.load_items_for_scene(scene_name, on_done=lambda: self.item_row.set_selected(0))
 
     def on_item_selected(self, *args):
         settings = self.get_settings()
@@ -226,4 +254,3 @@ class SceneItemBase(OBSActionBase, MixinBase, ABC):
     def on_connection_established(self):
         if hasattr(self, "scene_model") and hasattr(self, "item_model"):
             self.load_item_model()
-            self.load_configs()

@@ -86,7 +86,6 @@ class FilterBase(OBSActionBase, MixinBase, ABC):
         self.connect_signals()
 
         self.load_filter_model()
-        self.load_configs()
 
         super_rows.append(self.scene_row)
         super_rows.append(self.filter_row)
@@ -105,42 +104,72 @@ class FilterBase(OBSActionBase, MixinBase, ABC):
 
     def load_filter_model(self):
         self.disconnect_signals()
-        # Clear model
         while self.scene_model.get_n_items() > 0:
             self.scene_model.remove(0)
         while self.filter_model.get_n_items() > 0:
             self.filter_model.remove(0)
 
-        # Prepend blank options
         self.scene_model.append("")
         self.filter_model.append("")
 
-        # Load model
-        if self.backend.get_connected():
-            scenes = self.backend.get_scene_names()
-            if scenes is not None:
-                for scene in scenes:
-                    self.scene_model.append(scene)
+        def fetch_and_populate():
+            try:
+                if self.backend.get_connected():
+                    scenes = self.backend.get_scene_names()
+                    if scenes is not None:
+                        def populate():
+                            self.disconnect_signals()
+                            for scene in scenes:
+                                self.scene_model.append(scene)
+                            self.load_configs()
+                            self.connect_signals()
+                        GLib.idle_add(populate)
+                        return
+            except Exception as e:
+                pass
+            def fallback():
+                self.load_configs()
+                self.connect_signals()
+            GLib.idle_add(fallback)
 
-        self.connect_signals()
+        threading.Thread(target=fetch_and_populate, daemon=True, name="load_filter_model").start()
 
-    def load_filters_for_scene(self, scene_name):
-        # Clear filters model
+    def load_filters_for_scene(self, scene_name, on_done=None):
+        self.disconnect_signals()
         while self.filter_model.get_n_items() > 0:
             self.filter_model.remove(0)
 
         self.filter_model.append("")
 
         if not scene_name:
+            if on_done:
+                on_done()
+            self.connect_signals()
             return
 
-        if self.backend.get_connected():
-            filters = self.backend.get_source_filters(scene_name)
-            if filters is None:
-                self.show_error()
-                return
-            for item in filters:
-                self.filter_model.append(item.get("filterName"))
+        def fetch_and_populate():
+            try:
+                if self.backend.get_connected():
+                    filters = self.backend.get_source_filters(scene_name)
+                    if filters is not None:
+                        def populate():
+                            self.disconnect_signals()
+                            for item in filters:
+                                self.filter_model.append(item.get("filterName"))
+                            if on_done:
+                                on_done()
+                            self.connect_signals()
+                        GLib.idle_add(populate)
+                        return
+            except Exception as e:
+                pass
+            def fallback():
+                if on_done:
+                    on_done()
+                self.connect_signals()
+            GLib.idle_add(fallback)
+
+        threading.Thread(target=fetch_and_populate, daemon=True, name="load_filters_for_scene").start()
 
     def load_configs(self):
         self.load_config_values()
@@ -156,26 +185,27 @@ class FilterBase(OBSActionBase, MixinBase, ABC):
             for i, scene_name in enumerate(self.scene_model):
                 if scene_name.get_string() == configured_scene:
                     self.scene_row.set_selected(i)
-                    self.load_filters_for_scene(configured_scene)
+                    
+                    def select_filter():
+                        self.disconnect_signals()
+                        filter_found = False
+                        if configured_filter:
+                            for j, item_name in enumerate(self.filter_model):
+                                if item_name.get_string() == configured_filter:
+                                    self.filter_row.set_selected(j)
+                                    filter_found = True
+                                    break
+                        if not filter_found:
+                            self.filter_row.set_selected(0)
+                        self.connect_signals()
+
+                    self.load_filters_for_scene(configured_scene, on_done=select_filter)
                     scene_found = True
                     break
         
-        if scene_found:
-            filter_found = False
-            if configured_filter:
-                for j, item_name in enumerate(self.filter_model):
-                    if item_name.get_string() == configured_filter:
-                        self.filter_row.set_selected(j)
-                        filter_found = True
-                        break
-            if not filter_found:
-                self.filter_row.set_selected(0)
-        else:
+        if not scene_found:
             self.scene_row.set_selected(0)
-            self.load_filters_for_scene("")
-            self.filter_row.set_selected(0)
-
-        self.connect_signals()
+            self.load_filters_for_scene("", on_done=lambda: self.filter_row.set_selected(0))
 
     def on_scene_selected(self, *args):
         settings = self.get_settings()
@@ -190,9 +220,7 @@ class FilterBase(OBSActionBase, MixinBase, ABC):
         self.set_settings(settings)
         
         self.disconnect_signals()
-        self.load_filters_for_scene(scene_name)
-        self.filter_row.set_selected(0)
-        self.connect_signals()
+        self.load_filters_for_scene(scene_name, on_done=lambda: self.filter_row.set_selected(0))
 
     def on_filter_selected(self, *args):
         settings = self.get_settings()
@@ -227,4 +255,3 @@ class FilterBase(OBSActionBase, MixinBase, ABC):
     def on_connection_established(self):
         if hasattr(self, "scene_model") and hasattr(self, "filter_model"):
             self.load_filter_model()
-            self.load_configs()

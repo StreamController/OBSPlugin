@@ -104,7 +104,6 @@ class InputMuteBase(OBSActionBase, MixinBase, ABC):
         self.connect_signals()
 
         self.load_input_model()
-        self.load_configs()
 
         super_rows.append(self.input_row)
         return super_rows + self.mixin_config_rows()
@@ -120,21 +119,31 @@ class InputMuteBase(OBSActionBase, MixinBase, ABC):
 
     def load_input_model(self):
         self.disconnect_signals()
-        # Clear model
         while self.input_model.get_n_items() > 0:
             self.input_model.remove(0)
-
-        # Prepend blank option
         self.input_model.append("")
 
-        # Load model
-        if self.backend.get_connected():
-            inputs = self.backend.get_inputs()
-            if inputs is not None:
-                for input in inputs:
-                    self.input_model.append(input)
+        def fetch_and_populate():
+            try:
+                if self.backend.get_connected():
+                    inputs = self.backend.get_inputs()
+                    if inputs is not None:
+                        def populate():
+                            self.disconnect_signals()
+                            for input_name in inputs:
+                                self.input_model.append(input_name)
+                            self.load_configs()
+                            self.connect_signals()
+                        GLib.idle_add(populate)
+                        return
+            except Exception as e:
+                pass
+            def fallback():
+                self.load_configs()
+                self.connect_signals()
+            GLib.idle_add(fallback)
 
-        self.connect_signals()
+        threading.Thread(target=fetch_and_populate, daemon=True, name="load_input_model").start()
 
     def load_configs(self):
         self.load_selected_device()
@@ -193,4 +202,3 @@ class InputMuteBase(OBSActionBase, MixinBase, ABC):
     def on_connection_established(self):
         if hasattr(self, "input_model"):
             self.load_input_model()
-            self.load_configs()
