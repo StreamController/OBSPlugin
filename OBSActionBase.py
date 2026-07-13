@@ -128,8 +128,7 @@ class OBSActionBase(ActionBase):
         self.update_custom_icon_cache()
 
         if self.plugin_base.backend is not None:
-            if not self.backend.get_connected():
-                self.reconnect_obs()
+            self.reconnect_obs()
 
     @property
     def connection_id(self):
@@ -315,8 +314,13 @@ class OBSActionBase(ActionBase):
     def update_status_label(self) -> None:
         if not hasattr(self, "status_label") or self.status_label is None:
             return
-        connected = self.backend.get_connected()
-        GLib.idle_add(self._update_status_label, connected)
+        def check():
+            try:
+                connected = self.backend.get_connected()
+            except Exception:
+                connected = False
+            GLib.idle_add(self._update_status_label, connected)
+        threading.Thread(target=check, daemon=True, name="update_status_label").start()
 
     def _update_status_label(self, connected):
         if not hasattr(self, "status_label") or self.status_label is None:

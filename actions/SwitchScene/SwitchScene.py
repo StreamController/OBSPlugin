@@ -37,7 +37,6 @@ class SwitchScene(OBSActionBase):
         self.connect_signals()
 
         self.load_scene_model()
-        self.load_configs()
 
         super_rows.append(self.scene_row)
         return super_rows
@@ -53,21 +52,31 @@ class SwitchScene(OBSActionBase):
 
     def load_scene_model(self):
         self.disconnect_signals()
-        # Clear model
         while self.scene_model.get_n_items() > 0:
             self.scene_model.remove(0)
-
-        # Prepend blank option
         self.scene_model.append("")
 
-        # Load model
-        if self.backend.get_connected():
-            scenes = self.backend.get_scene_names()
-            if scenes is not None:
-                for scene in scenes:
-                    self.scene_model.append(scene)
+        def fetch_and_populate():
+            try:
+                if self.backend.get_connected():
+                    scenes = self.backend.get_scene_names()
+                    if scenes is not None:
+                        def populate():
+                            self.disconnect_signals()
+                            for scene in scenes:
+                                self.scene_model.append(scene)
+                            self.load_configs()
+                            self.connect_signals()
+                        GLib.idle_add(populate)
+                        return
+            except Exception as e:
+                pass
+            def fallback():
+                self.load_configs()
+                self.connect_signals()
+            GLib.idle_add(fallback)
 
-        self.connect_signals()
+        threading.Thread(target=fetch_and_populate, daemon=True, name="load_scene_model").start()
 
     def load_configs(self):
         self.load_selected_device()
@@ -147,4 +156,3 @@ class SwitchScene(OBSActionBase):
     def on_connection_established(self):
         if hasattr(self, "scene_model"):
             self.load_scene_model()
-            self.load_configs()

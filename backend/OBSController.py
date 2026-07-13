@@ -173,8 +173,8 @@ class OBSController(obsws):
 
         try:
             log.debug(f"Trying to connect to obs with legacy: {legacy}")
-            super().__init__(host=host, port=port, timeout=timeout, legacy=legacy, on_connect=self.on_connect, on_disconnect=self.on_disconnect, authreconnect=5, **kwargs)
-            self.event_obs = OBSEventController(host=host, port=port, timeout=timeout, legacy=legacy, on_connect=self.on_connect, on_disconnect=self.on_disconnect, authreconnect=5, **kwargs)
+            super().__init__(host=host, port=port, timeout=timeout, legacy=legacy, on_connect=self.on_connect, on_disconnect=self.on_disconnect, authreconnect=None, **kwargs)
+            self.event_obs = OBSEventController(host=host, port=port, timeout=timeout, legacy=legacy, on_connect=self.on_connect, on_disconnect=self.on_disconnect, authreconnect=None, **kwargs)
             self.connect()
             try:
                 self.event_obs.connect()
@@ -186,8 +186,8 @@ class OBSController(obsws):
         except (obswebsocket.exceptions.ConnectionFailure, ValueError) as e:
             try:
                 log.error(f"Failed to connect to OBS with legacy: {legacy}, trying with legacy: {not legacy}")
-                super().__init__(host=host, port=port, timeout=timeout, legacy=not legacy, on_connect=self.on_connect, on_disconnect=self.on_disconnect, authreconnect=5, **kwargs)
-                self.event_obs = OBSEventController(host=host, port=port, timeout=timeout, legacy=not legacy, on_connect=self.on_connect, on_disconnect=self.on_disconnect, authreconnect=5, **kwargs)
+                super().__init__(host=host, port=port, timeout=timeout, legacy=not legacy, on_connect=self.on_connect, on_disconnect=self.on_disconnect, authreconnect=None, **kwargs)
+                self.event_obs = OBSEventController(host=host, port=port, timeout=timeout, legacy=not legacy, on_connect=self.on_connect, on_disconnect=self.on_disconnect, authreconnect=None, **kwargs)
                 self.connect()
                 try:
                     self.event_obs.connect()
