@@ -126,7 +126,7 @@ class FilterBase(OBSActionBase, MixinBase, ABC):
                         GLib.idle_add(populate)
                         return
             except Exception as e:
-                pass
+                log.exception("Error in FilterBase load_filter_model")
             def fallback():
                 self.load_configs()
                 self.connect_signals()
@@ -162,7 +162,7 @@ class FilterBase(OBSActionBase, MixinBase, ABC):
                         GLib.idle_add(populate)
                         return
             except Exception as e:
-                pass
+                log.exception("Error in FilterBase load_filters_for_scene")
             def fallback():
                 if on_done:
                     on_done()
