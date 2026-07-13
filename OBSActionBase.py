@@ -106,7 +106,12 @@ class BackendProxy:
         attr = getattr(backend, name)
         if callable(attr):
             def wrapper(*args, **kwargs):
-                return attr(*args, connection_id=self._action.connection_id, **kwargs)
+                lock = getattr(self._plugin_base, "rpyc_lock", None)
+                if lock is not None:
+                    with lock:
+                        return attr(*args, connection_id=self._action.connection_id, **kwargs)
+                else:
+                    return attr(*args, connection_id=self._action.connection_id, **kwargs)
             return wrapper
         return attr
 
