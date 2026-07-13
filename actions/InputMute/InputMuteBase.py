@@ -123,27 +123,17 @@ class InputMuteBase(OBSActionBase, MixinBase, ABC):
             self.input_model.remove(0)
         self.input_model.append("")
 
-        def fetch_and_populate():
-            try:
-                if self.backend.get_connected():
-                    inputs = self.backend.get_inputs()
-                    if inputs is not None:
-                        def populate():
-                            self.disconnect_signals()
-                            for input_name in inputs:
-                                self.input_model.append(input_name)
-                            self.load_configs()
-                            self.connect_signals()
-                        GLib.idle_add(populate)
-                        return
-            except Exception as e:
-                log.exception("Error in InputMuteBase load_input_model")
-            def fallback():
-                self.load_configs()
-                self.connect_signals()
-            GLib.idle_add(fallback)
+        try:
+            if self.backend.get_connected():
+                inputs = self.backend.get_inputs()
+                if inputs is not None:
+                    for input_name in inputs:
+                        self.input_model.append(input_name)
+        except Exception as e:
+            log.exception("Error in InputMuteBase load_input_model")
 
-        threading.Thread(target=fetch_and_populate, daemon=True, name="load_input_model").start()
+        self.load_configs()
+        self.connect_signals()
 
     def load_configs(self):
         self.load_selected_device()

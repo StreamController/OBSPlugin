@@ -56,27 +56,17 @@ class SwitchScene(OBSActionBase):
             self.scene_model.remove(0)
         self.scene_model.append("")
 
-        def fetch_and_populate():
-            try:
-                if self.backend.get_connected():
-                    scenes = self.backend.get_scene_names()
-                    if scenes is not None:
-                        def populate():
-                            self.disconnect_signals()
-                            for scene in scenes:
-                                self.scene_model.append(scene)
-                            self.load_configs()
-                            self.connect_signals()
-                        GLib.idle_add(populate)
-                        return
-            except Exception as e:
-                log.exception("Error in SwitchScene fetch_and_populate")
-            def fallback():
-                self.load_configs()
-                self.connect_signals()
-            GLib.idle_add(fallback)
+        try:
+            if self.backend.get_connected():
+                scenes = self.backend.get_scene_names()
+                if scenes is not None:
+                    for scene in scenes:
+                        self.scene_model.append(scene)
+        except Exception as e:
+            log.exception("Error in SwitchScene load_scene_model")
 
-        threading.Thread(target=fetch_and_populate, daemon=True, name="load_scene_model").start()
+        self.load_configs()
+        self.connect_signals()
 
     def load_configs(self):
         self.load_selected_device()

@@ -112,27 +112,17 @@ class FilterBase(OBSActionBase, MixinBase, ABC):
         self.scene_model.append("")
         self.filter_model.append("")
 
-        def fetch_and_populate():
-            try:
-                if self.backend.get_connected():
-                    scenes = self.backend.get_scene_names()
-                    if scenes is not None:
-                        def populate():
-                            self.disconnect_signals()
-                            for scene in scenes:
-                                self.scene_model.append(scene)
-                            self.load_configs()
-                            self.connect_signals()
-                        GLib.idle_add(populate)
-                        return
-            except Exception as e:
-                log.exception("Error in FilterBase load_filter_model")
-            def fallback():
-                self.load_configs()
-                self.connect_signals()
-            GLib.idle_add(fallback)
+        try:
+            if self.backend.get_connected():
+                scenes = self.backend.get_scene_names()
+                if scenes is not None:
+                    for scene in scenes:
+                        self.scene_model.append(scene)
+        except Exception as e:
+            log.exception("Error in FilterBase load_filter_model")
 
-        threading.Thread(target=fetch_and_populate, daemon=True, name="load_filter_model").start()
+        self.load_configs()
+        self.connect_signals()
 
     def load_filters_for_scene(self, scene_name, on_done=None):
         self.disconnect_signals()
@@ -147,29 +137,18 @@ class FilterBase(OBSActionBase, MixinBase, ABC):
             self.connect_signals()
             return
 
-        def fetch_and_populate():
-            try:
-                if self.backend.get_connected():
-                    filters = self.backend.get_source_filters(scene_name)
-                    if filters is not None:
-                        def populate():
-                            self.disconnect_signals()
-                            for item in filters:
-                                self.filter_model.append(item.get("filterName"))
-                            if on_done:
-                                on_done()
-                            self.connect_signals()
-                        GLib.idle_add(populate)
-                        return
-            except Exception as e:
-                log.exception("Error in FilterBase load_filters_for_scene")
-            def fallback():
-                if on_done:
-                    on_done()
-                self.connect_signals()
-            GLib.idle_add(fallback)
+        try:
+            if self.backend.get_connected():
+                filters = self.backend.get_source_filters(scene_name)
+                if filters is not None:
+                    for item in filters:
+                        self.filter_model.append(item.get("filterName"))
+        except Exception as e:
+            log.exception("Error in FilterBase load_filters_for_scene")
 
-        threading.Thread(target=fetch_and_populate, daemon=True, name="load_filters_for_scene").start()
+        if on_done:
+            on_done()
+        self.connect_signals()
 
     def load_configs(self):
         self.load_config_values()
