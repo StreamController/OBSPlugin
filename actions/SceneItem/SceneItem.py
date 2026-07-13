@@ -125,7 +125,7 @@ class SceneItemBase(OBSActionBase, MixinBase, ABC):
                         GLib.idle_add(populate)
                         return
             except Exception as e:
-                pass
+                log.exception("Error in SceneItem load_item_model")
             def fallback():
                 self.load_configs()
                 self.connect_signals()
@@ -161,7 +161,7 @@ class SceneItemBase(OBSActionBase, MixinBase, ABC):
                         GLib.idle_add(populate)
                         return
             except Exception as e:
-                pass
+                log.exception("Error in SceneItem load_items_for_scene")
             def fallback():
                 if on_done:
                     on_done()

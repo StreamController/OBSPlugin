@@ -137,7 +137,7 @@ class InputMuteBase(OBSActionBase, MixinBase, ABC):
                         GLib.idle_add(populate)
                         return
             except Exception as e:
-                pass
+                log.exception("Error in InputMuteBase load_input_model")
             def fallback():
                 self.load_configs()
                 self.connect_signals()

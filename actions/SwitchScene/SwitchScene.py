@@ -70,7 +70,7 @@ class SwitchScene(OBSActionBase):
                         GLib.idle_add(populate)
                         return
             except Exception as e:
-                pass
+                log.exception("Error in SwitchScene fetch_and_populate")
             def fallback():
                 self.load_configs()
                 self.connect_signals()
