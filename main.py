@@ -65,7 +65,7 @@ class OBS(PluginBase):
         self.register(
             plugin_name=self.lm.get("plugin.name"),
             github_repo="https://github.com/oparada1988/OBSPlugin",
-            plugin_version="1.0.1",
+            plugin_version="1.0.2",
             app_version="1.0.0-alpha",
         )
 
