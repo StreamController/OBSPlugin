@@ -271,7 +271,25 @@ class OBSActionBase(ActionBase):
             filename = os.path.basename(media_path)
             if hasattr(self, "validated_custom_icons") and filename in self.validated_custom_icons:
                 media_path = self.validated_custom_icons[filename]
-        super().set_media(media_path=media_path, *args, **kwargs)
+        
+        method = super().set_media
+        GLib.idle_add(lambda: method(media_path=media_path, *args, **kwargs))
+
+    def set_bottom_label(self, *args, **kwargs):
+        method = super().set_bottom_label
+        GLib.idle_add(lambda: method(*args, **kwargs))
+
+    def set_top_label(self, *args, **kwargs):
+        method = super().set_top_label
+        GLib.idle_add(lambda: method(*args, **kwargs))
+
+    def set_center_label(self, *args, **kwargs):
+        method = super().set_center_label
+        GLib.idle_add(lambda: method(*args, **kwargs))
+
+    def set_background_color(self, *args, **kwargs):
+        method = super().set_background_color
+        GLib.idle_add(lambda: method(*args, **kwargs))
 
     def load_config_defaults(self):
         self.connections_list = self.plugin_base.get_settings().get("connections", [])
