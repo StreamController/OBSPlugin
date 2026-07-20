@@ -1,5 +1,5 @@
 from OBSActionBase import OBSActionBase
-from actions.mixins import State, MixinBase
+from ..mixins import State, MixinBase
 from src.backend.DeckManagement.DeckController import DeckController
 from src.backend.PageManagement.Page import Page
 from src.backend.PluginManager.PluginBase import PluginBase
