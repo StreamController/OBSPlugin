@@ -18,29 +18,31 @@ import threading
 from loguru import logger as log
 
 # Add plugin to sys.paths
-sys.path.append(os.path.dirname(__file__))
+plugin_dir = os.path.dirname(__file__)
+if plugin_dir not in sys.path:
+    sys.path.append(plugin_dir)
 
-from actions.ToggleStream.ToggleStream import ToggleStream
+from .actions.ToggleStream.ToggleStream import ToggleStream
 
-from actions.ToggleRecord.ToggleRecord import ToggleRecord
-from actions.RecPlayPause.RecPlayPause import RecPlayPause
+from .actions.ToggleRecord.ToggleRecord import ToggleRecord
+from .actions.RecPlayPause.RecPlayPause import RecPlayPause
 
-from actions.ToggleReplayBuffer.ToggleReplayBuffer import ToggleReplayBuffer
-from actions.SaveReplayBuffer.SaveReplayBuffer import SaveReplayBuffer
+from .actions.ToggleReplayBuffer.ToggleReplayBuffer import ToggleReplayBuffer
+from .actions.SaveReplayBuffer.SaveReplayBuffer import SaveReplayBuffer
 
-from actions.ToggleVirtualCamera.ToggleVirtualCamera import ToggleVirtualCamera
+from .actions.ToggleVirtualCamera.ToggleVirtualCamera import ToggleVirtualCamera
 
-from actions.ToggleStudioMode.ToggleStudioMode import ToggleStudioMode
-from actions.TriggerTransition.TriggerTransition import TriggerTransition
+from .actions.ToggleStudioMode.ToggleStudioMode import ToggleStudioMode
+from .actions.TriggerTransition.TriggerTransition import TriggerTransition
 
-from actions.InputMute import SetInputMute, ToggleInputMute
-from actions.InputDial.InputDial import InputDial
+from .actions.InputMute import SetInputMute, ToggleInputMute
+from .actions.InputDial.InputDial import InputDial
 
-from actions.SwitchScene.SwitchScene import SwitchScene
-from actions.SceneItem import SetSceneItemEnabled, ToggleSceneItemEnabled
-from actions.Filter import SetFilter, ToggleFilter
-from actions.SwitchSceneCollection.SwitchSceneCollection import SwitchSceneCollection
-from actions.OBSStats.OBSStats import OBSStats
+from .actions.SwitchScene.SwitchScene import SwitchScene
+from .actions.SceneItem import SetSceneItemEnabled, ToggleSceneItemEnabled
+from .actions.Filter import SetFilter, ToggleFilter
+from .actions.SwitchSceneCollection.SwitchSceneCollection import SwitchSceneCollection
+from .actions.OBSStats.OBSStats import OBSStats
 
 
 class OBS(PluginBase):

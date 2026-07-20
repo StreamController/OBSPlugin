@@ -1,7 +1,7 @@
 from abc import ABC
 
 from OBSActionBase import OBSActionBase
-from actions.mixins import MixinBase, State
+from ..mixins import MixinBase, State
 
 import os
 import threading

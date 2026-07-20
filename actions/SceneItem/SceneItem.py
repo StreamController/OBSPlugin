@@ -3,7 +3,7 @@ from src.backend.DeckManagement.DeckController import DeckController
 from src.backend.PageManagement.Page import Page
 from src.backend.PluginManager.PluginBase import PluginBase
 
-from actions.mixins import State, MixinBase
+from ..mixins import State, MixinBase
 
 from abc import ABC
 import os

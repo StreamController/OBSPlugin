@@ -1,4 +1,4 @@
-from actions.mixins import SetMixin
+from ..mixins import SetMixin
 from .FilterBase import FilterBase
 
 

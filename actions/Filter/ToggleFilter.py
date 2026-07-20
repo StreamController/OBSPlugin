@@ -1,4 +1,4 @@
-from actions.mixins import ToggleMixin
+from ..mixins import ToggleMixin
 from .FilterBase import FilterBase
 
 
