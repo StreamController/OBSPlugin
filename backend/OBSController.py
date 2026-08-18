@@ -87,6 +87,11 @@ class OBSController(obsws):
         self._connected_state = False
         self.event_obs: obsws = None # All events are connected to this to avoid crash if a request is made in an event
         self.volume_meters = {}
+        # (scene, item) pairs already reported missing by get_scene_item_enabled.
+        # Every SceneItem action polls once per tick, so when the active scene
+        # collection doesn't contain the referenced scenes an unconditional
+        # warning floods the journal at one line per action per second.
+        self._missing_scene_items = set()
         pass
 
     @property
@@ -460,7 +465,14 @@ class OBSController(obsws):
             return self.call(requests.GetSceneItemEnabled(sceneName=sceneName, sceneItemId=sceneItemId))
         except Exception as e:
             if str(e) == "'sceneItemId'":
-                log.warning("Cannot find the scene item!")
+                # Expected while another scene collection is active: warn once
+                # per pair instead of once per tick.
+                if (sceneName, sourceName) not in self._missing_scene_items:
+                    self._missing_scene_items.add((sceneName, sourceName))
+                    log.warning(
+                        f"Cannot find scene item {sourceName!r} in scene "
+                        f"{sceneName!r} -- suppressing repeats of this warning"
+                    )
             else:
                 log.error(e)
 

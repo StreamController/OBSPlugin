@@ -42,7 +42,10 @@ class FilterBase(OBSActionBase, MixinBase, ABC):
             return
 
         status = self.backend.get_source_filter(self.get_settings().get("scene"), self.get_settings().get("filter"))
-        if status is None:
+        # The backend returns an empty dict (not None) when the scene or filter
+        # doesn't exist in the active scene collection; indexing it raises a
+        # KeyError over rpyc and logs a full traceback on every tick.
+        if not status or "filterEnabled" not in status:
             self.current_state = State.UNKNOWN
             self.hide_error()
             self.show_for_state(State.UNKNOWN)
